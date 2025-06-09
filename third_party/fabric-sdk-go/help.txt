@@ -1,0 +1,11 @@
+基于fabric-sdk-go v1.0.0正式版 国密改造
+
+未修改的:
+1.
+TransientFailure 问题
+pkg/fab/comm/connector.go  DialContext函数
+
+2.
+solo tls模式链接没有走grpcs失败
+pkg/fab/channel/transactor.go
+
