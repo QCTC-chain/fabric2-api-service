@@ -9,6 +9,11 @@ import (
 func SetUpRouter() *mux.Router {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/v1/contractlist", controller.GetContractList).Methods("GET")
+	// 配置相关
+	router.HandleFunc("/api/v1/config/init", controller.InitSdkConfig).Methods("POST")
+	router.HandleFunc("/api/v1/service/instantiate", controller.InstantiateService).Methods("POST")
+
+	// 合约相关
+	router.HandleFunc("/api/v1/contract/list", controller.GetContractList).Methods("GET")
 	return router
 }

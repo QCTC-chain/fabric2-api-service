@@ -9,6 +9,11 @@ import (
 
 func GetContractList(w http.ResponseWriter, r *http.Request) {
 	fabric2Service := service.GetFabric2Service()
+	if fabric2Service == nil {
+		utils.BadRequest(w, "Fabric2Service is not initialized")
+		return
+	}
+
 	channelID := r.URL.Query().Get("channel_id")
 
 	if channelID == "" {
