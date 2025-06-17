@@ -109,6 +109,9 @@ organizations:
       Admin:
         cert:
           path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
+        key:
+          path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/keystore/priv_sk
+
       # User1:
       #   cert:
       #     path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
@@ -155,7 +158,6 @@ organizations:
         Admin:
           cert:
             path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
-
 
 #
 # List of orderers to send transaction and channel create/update requests to. For the time

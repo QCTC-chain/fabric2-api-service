@@ -1,0 +1,9 @@
+server:
+  port: 8080
+
+fabric:
+  fabric2:
+    configFilePath: "./fabric2/fabric2.yaml"
+
+  fabric1:
+    configFilePath: "/test"

@@ -1,12 +1,20 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
-
+	"fmt"
+	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/event"
+	"github.com/hyperledger/fabric-sdk-go/pkg/client/ledger"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
+	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/qctc/fabric2-api-server/model/vo"
+	"log"
 )
 
 type Fabric2Service struct {
@@ -18,7 +26,7 @@ var fabric2ServiceInstance *Fabric2Service
 func InitFabric2Service(configPath string) error {
 	sdk, err := fabsdk.New(
 		config.FromFile(configPath),
-		fabsdk.WithGMTLS(true),
+		fabsdk.WithGMTLS(false),
 		fabsdk.WithTxTimeStamp(false))
 	if err != nil {
 		return err
@@ -32,12 +40,12 @@ func GetFabric2Service() *Fabric2Service {
 }
 
 func (s *Fabric2Service) getOrgName() (string, error) {
-	config, err := s.sdk.Config()
+	sdkConfig, err := s.sdk.Config()
 	if err != nil {
 		return "", err
 	}
 
-	clientConfig, bok := config.Lookup("client")
+	clientConfig, bok := sdkConfig.Lookup("client")
 	if !bok {
 		return "", errors.New("client configuration not found")
 	}
@@ -49,12 +57,12 @@ func (s *Fabric2Service) getOrgName() (string, error) {
 }
 
 func (s *Fabric2Service) getOrgAdmin(orgName string) (string, error) {
-	config, err := s.sdk.Config()
+	sdkConfig, err := s.sdk.Config()
 	if err != nil {
 		return "", err
 	}
 
-	organizations, bok := config.Lookup("organizations")
+	organizations, bok := sdkConfig.Lookup("organizations")
 	if !bok {
 		return "", errors.New("organizations configuration not found")
 	}
@@ -92,9 +100,9 @@ func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, err
 	// 获取某个通道上已部署的 chaincode 列表
 	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{})
 	if err != nil {
+		log.Printf("Failed to query committed chaincodes: %v", err)
 		return nil, err
 	}
-
 	contractList := make([]vo.ContractVO, 0)
 	for _, cc := range installedCC {
 		contractList = append(contractList, vo.ContractVO{
@@ -103,6 +111,222 @@ func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, err
 			Sequence: cc.Sequence,
 		})
 	}
+	fmt.Printf("------------------------------%s", contractList)
 
 	return contractList, nil
+}
+
+// GetContractInfo 获取合约信息
+func (s *Fabric2Service) GetContractInfo(channelID, chaincodeName string) (map[string]interface{}, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName),
+	)
+
+	channelClient, err := channel.New(channelContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// 调用链码查询接口（需要链码实现GetMetadata方法）
+	response, err := channelClient.Query(channel.Request{
+		ChaincodeID: chaincodeName,
+		Fcn:         "GetMetadata",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析响应数据（根据实际链码响应结构调整）
+	var metadata map[string]interface{}
+	err = json.Unmarshal(response.Payload, &metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+// SubscribeEvent 订阅合约事件
+func (s *Fabric2Service) SubscribeEvent(channelID, chaincodeName string) (fab.Registration, <-chan *fab.CCEvent, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	eventContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithOrg(orgName),
+	)
+
+	eventClient, err := event.New(eventContext)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 注册事件监听
+	req, eventCh, err := eventClient.RegisterChaincodeEvent(chaincodeName, ".*")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 返回事件通道，调用方需要负责管理注册和清理
+	return req, eventCh, nil
+}
+
+// InvokeContract 执行合约调用
+func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function string, args [][]byte) ([]byte, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName),
+	)
+
+	channelClient, err := channel.New(channelContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// 执行链码调用
+	response, err := channelClient.Execute(channel.Request{
+		ChaincodeID: chaincodeName,
+		Fcn:         function,
+		Args:        args,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Payload, nil
+}
+
+// GetBlockInfo 获取区块信息
+func (s *Fabric2Service) GetBlockInfo(channelID string, blockNumber uint64) (*common.Block, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	ledgerContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithOrg(orgName),
+	)
+
+	ledgerClient, err := ledger.New(ledgerContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询指定区块信息
+	block, err := ledgerClient.QueryBlock(blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+// UnsubscribeEvent 取消事件订阅（需要传递注册ID）
+func (s *Fabric2Service) UnsubscribeEvent(channelID, chaincodeName string, regID fab.Registration) error {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return err
+	}
+
+	eventContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithOrg(orgName),
+	)
+
+	eventClient, err := event.New(eventContext)
+	if err != nil {
+		return err
+	}
+
+	// 取消事件注册
+	eventClient.Unregister(regID)
+	return nil
+}
+
+func (s *Fabric2Service) TestConnection() error {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		log.Println("Failed to get organization name")
+		return err
+	}
+
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		log.Println("Failed to get organization admin")
+		return err
+	}
+
+	// 创建管理用户上下文
+	ctx := s.sdk.Context(fabsdk.WithUser(orgAdmin), fabsdk.WithOrg(orgName))
+
+	// 创建资源管理客户端（用于与排序节点通信）
+	resMgmtClient, err := resmgmt.New(ctx)
+	if err != nil {
+		log.Println("Failed to create resource management client")
+		return err
+	}
+
+	// 查询通道信息（实际发送请求，验证是否能正常通信）
+	channels, err := resMgmtClient.QueryChannels()
+	if err != nil {
+		log.Println("Failed to query channels")
+		return err
+	}
+	if len(channels.Channels) > 0 {
+		return nil
+	}
+
+	return nil
+}
+
+// GetTransactionInfo 获取指定交易的详细信息
+func (s *Fabric2Service) GetTransactionInfo(channelID, txID string) (*pb.ProcessedTransaction, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	ledgerContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithOrg(orgName),
+	)
+
+	ledgerClient, err := ledger.New(ledgerContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询交易详情
+	tx, err := ledgerClient.QueryTransaction(fab.TransactionID(txID))
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
 }

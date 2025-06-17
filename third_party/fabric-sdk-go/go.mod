@@ -4,7 +4,7 @@
 
 module github.com/hyperledger/fabric-sdk-go
 
-replace gitee.com/china_uni/tjfoc-gm v1.2.1 => ./third_party/tjfoc-gm
+replace gitee.com/china_uni/tjfoc-gm v1.2.1 => ../tjfoc-gm
 
 require (
 	gitee.com/china_uni/tjfoc-gm v1.2.1
