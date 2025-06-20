@@ -1,9 +1,18 @@
 server:
-  port: 8080
+  port: 9090
 
+#fabric 名称配置，不同链需要配置不同的链配置文件路径
 fabric:
   fabric2:
     configFilePath: "./fabric2/fabric2.yaml"
+mq:
+  type: 'rocketmq'
+  host: '192.168.1.45'
+  port: 8081
+  userName: ''
+  password: ''
+  topic: 'wecross'
+  group: ''
 
-  fabric1:
-    configFilePath: "/test"
+#链类型配置，如果要连qbaas的gm链配置‘qbaas', 连其他链配置'other'
+chainType: 'other'

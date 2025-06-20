@@ -13,6 +13,7 @@ package msp
 import (
 	"crypto"
 	"crypto/rand"
+	bccsp2 "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/bccsp"
 
 	// "crypto/x509"
 	"encoding/hex"
@@ -214,6 +215,9 @@ func (id *identity) getHashOpt(hashFamily string) (core.HashOpts, error) {
 		return bccsp.GetHashOpt(bccsp.SHA256)
 	case bccsp.SHA3:
 		return bccsp.GetHashOpt(bccsp.SHA3_256)
+	case bccsp2.SM3:
+		return bccsp2.GetHashOpt(bccsp2.SM3)
+
 	}
 	return nil, errors.Errorf("hash familiy not recognized [%s]", hashFamily)
 }

@@ -33,9 +33,9 @@ client:
     # [Optional]. Client key and cert for TLS handshake with peers and orderers
     client:
       key:
-        path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/tls/server.key
+        path:
       cert:
-        path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/tls/server.crt
+        path:
 
 
 
@@ -57,7 +57,7 @@ channels:
 
     # Required. list of peers from participating orgs
     peers:
-      peer0.org1.example.com:
+      peer1.org.sysgmdlq.com:
         # [Optional]. will this peer be sent transaction proposals for endorsement? The peer must
         # have the chaincode installed. The app can also use this property to decide which peers
         # to send the chaincode install request. Default: true
@@ -102,22 +102,22 @@ channels:
 #
 organizations:
   org1:
-    mspid: Org1MSP
+    mspid: orgMSPsysgmdlq
 
     # Needed to load users crypto certs for this org
     users:
       Admin:
         cert:
-          path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
+          path: /data/sdk-test/config/crypto-config/msp/signcerts/cert.pem
         key:
-          path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/keystore/priv_sk
+          path: /data/sdk-test/config/crypto-config/msp/keystore/cb958933106dfc5056ec88d9ae18fb83649d42ffe979e5e7564f3ea814432ce8_sk
 
       # User1:
       #   cert:
       #     path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
 
     peers:
-      - peer0.org1.example.com
+      - peer1.org.sysgmdlq.com
 
     # [Optional]. Certificate Authorities issue certificates for identification purposes in a Fabric based
     # network. Typically certificates provisioning is done in a separate process outside of the
@@ -152,12 +152,14 @@ organizations:
   # Orderer Org name
   ordererorg:
       # Membership Service Provider ID for this organization
-      mspID: OrdererMSP
+      mspID: orgMSPsysgmdlq
 
       users:
         Admin:
           cert:
-            path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
+            path: /data/sdk-test/config/crypto-config/msp/signcerts/cert.pem
+          key:
+            path: /data/sdk-test/config/crypto-config/msp/keystore/cb958933106dfc5056ec88d9ae18fb83649d42ffe979e5e7564f3ea814432ce8_sk
 
 #
 # List of orderers to send transaction and channel create/update requests to. For the time
@@ -165,15 +167,15 @@ organizations:
 # SDK is implementation specific. Consult each SDK's documentation for its handling of orderers.
 #
 orderers:
-  orderer.example.com:
+  orderer.ixgvimrt.com:
     # [Optional] Default: Infer from hostname
-    url: orderer.example.com:7050
+    url: grpcs://192.168.7.12:21004
 
     # these are standard properties defined by the gRPC library
     # they will be passed in as-is to gRPC client constructor
     #TODO to be moved to high level, common for all grpc connections
     grpcOptions:
-      ssl-target-name-override: orderer.example.com
+      ssl-target-name-override: orderer.ixgvimrt.com
       fail-fast: false
 
       #will be taken into consideration if address has no protocol defined, if true then grpc or else grpcs
@@ -181,21 +183,20 @@ orderers:
 
     tlsCACerts:
       # Certificate location absolute path
-      path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/ordererOrganizations/org.qrrnhuzu/orderers/orderer.njfgwocm.com/tls/ca.crt
-
+      path: /data/sdk-test/config/crypto-config/orderer.ixgvimrt.com.crt
 #
 # List of peers to send various requests to, including endorsement, query
 # and event listener registration.
 #
 peers:
-  peer0.org1.example.com:
+  peer1.org.sysgmdlq.com:
     # this URL is used to send endorsement and query requests
     # [Optional] Default: Infer from hostname
-    url: peer0.org1.example.com:7051
+    url: grpcs://192.168.7.12:21120
 
     #TODO to be moved to high level, common for all grpc connections
     grpcOptions:
-      ssl-target-name-override: peer0.org1.example.com
+      ssl-target-name-override: peer1.org.sysgmdlq.com
       fail-fast: false
 
       #will be taken into consideration if address has no protocol defined, if true then grpc or else grpcs
@@ -203,8 +204,7 @@ peers:
 
     tlsCACerts:
       # Certificate location absolute path
-      path: /Users/dbliu/Desktop/Desktop/fabric2_sdk_config/peerOrganizations/org.qrrnhuzu/peers/peer1.org.qrrnhuzu.com/msp/signcerts/peer1.org.qrrnhuzu.com-cert.pem
-
+      path: /data/sdk-test/config/crypto-config/peer1.org.sysgmdlq.com.crt
   # peer0.org2.example.com:
   #   url: peer0.org2.example.com:8051
   #   #TODO to be moved to high level, common for all grpc connections

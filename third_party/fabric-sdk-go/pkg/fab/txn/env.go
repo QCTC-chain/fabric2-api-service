@@ -9,6 +9,9 @@ package txn
 import (
 	"encoding/hex"
 	"fmt"
+	"gitee.com/china_uni/tjfoc-gm/sm3"
+	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
+	"github.com/qctc/fabric2-api-server/define"
 	"hash"
 	"os"
 	"strings"
@@ -23,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/common/crypto"
 	contextApi "github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
 )
 
 // TransactionHeader contains metadata for a transaction created by the SDK.
@@ -80,21 +82,25 @@ func NewHeader(ctx contextApi.Client, channelID string, opts ...fab.TxnHeaderOpt
 			return nil, errors.WithMessage(err, "identity from context failed")
 		}
 	}
-
-	ho := cryptosuite.GetSHA256Opts() // TODO: make configurable
-	h, err := ctx.CryptoSuite().GetHash(ho)
-	if err != nil {
-		return nil, errors.WithMessage(err, "hash function creation failed")
+	var h hash.Hash
+	var err error
+	if define.GlobalConfig.ChainType == "qbaas" {
+		h = sm3.New()
+	} else {
+		ho := cryptosuite.GetSHA256Opts() // TODO: make configurable
+		h, err = ctx.CryptoSuite().GetHash(ho)
+		if err != nil {
+			return nil, errors.WithMessage(err, "hash function creation failed")
+		}
 	}
 
 	id, err := computeTxnID(nonce, creator, h)
 	if err != nil {
 		return nil, errors.WithMessage(err, "txn ID computation failed")
 	}
-
 	// jzk, tx with timestamp, for fabric 1.4.8-enhanced
 	// global configuration of environment variables or the individual configuration of sdk granularity
-	if options.EnableTxTimeStamp || strings.ToLower(os.Getenv("TXID_WITH_TIMESTAMP")) == "true"{
+	if options.EnableTxTimeStamp || strings.ToLower(os.Getenv("TXID_WITH_TIMESTAMP")) == "true" {
 		id = fmt.Sprintf("%d-%s", time.Now().UnixNano(), id)
 	}
 
@@ -117,7 +123,6 @@ func computeTxnID(nonce, creator []byte, h hash.Hash) (string, error) {
 	}
 	digest := h.Sum(nil)
 	id := hex.EncodeToString(digest)
-
 
 	return id, nil
 }

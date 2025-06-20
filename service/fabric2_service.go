@@ -3,7 +3,8 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/channel"
@@ -14,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/qctc/fabric2-api-server/model/vo"
-	"log"
 )
 
 type Fabric2Service struct {
@@ -22,8 +22,9 @@ type Fabric2Service struct {
 }
 
 var fabric2ServiceInstance *Fabric2Service
+var Fabric2ServicePool map[string]*Fabric2Service
 
-func InitFabric2Service(configPath string) error {
+func InitFabric2Service(configPath string, chainName string) error {
 	sdk, err := fabsdk.New(
 		config.FromFile(configPath),
 		fabsdk.WithGMTLS(false),
@@ -32,11 +33,15 @@ func InitFabric2Service(configPath string) error {
 		return err
 	}
 	fabric2ServiceInstance = &Fabric2Service{sdk: sdk}
+	if Fabric2ServicePool == nil {
+		Fabric2ServicePool = make(map[string]*Fabric2Service)
+	}
+	Fabric2ServicePool[chainName] = &Fabric2Service{sdk: sdk}
 	return nil
 }
 
-func GetFabric2Service() *Fabric2Service {
-	return fabric2ServiceInstance
+func GetFabric2Service(chainName string) *Fabric2Service {
+	return Fabric2ServicePool[chainName]
 }
 
 func (s *Fabric2Service) getOrgName() (string, error) {
@@ -111,7 +116,6 @@ func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, err
 			Sequence: cc.Sequence,
 		})
 	}
-	fmt.Printf("------------------------------%s", contractList)
 
 	return contractList, nil
 }
@@ -196,18 +200,15 @@ func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function strin
 	if err != nil {
 		return nil, err
 	}
-
 	channelContext := s.sdk.ChannelContext(
 		channelID,
 		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
-
 	channelClient, err := channel.New(channelContext)
 	if err != nil {
 		return nil, err
 	}
-
 	// 执行链码调用
 	response, err := channelClient.Execute(channel.Request{
 		ChaincodeID: chaincodeName,
@@ -215,6 +216,7 @@ func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function strin
 		Args:        args,
 	})
 	if err != nil {
+		log.Printf("execute is error %s", err)
 		return nil, err
 	}
 

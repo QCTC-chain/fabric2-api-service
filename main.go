@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/producer"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/router"
-	"gopkg.in/yaml.v2"
+	"github.com/qctc/fabric2-api-server/utils"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -32,10 +35,30 @@ func init() {
 
 	// 设置全局配置
 	define.GlobalConfig = config
+	mqConfig := define.GlobalConfig.MQ
+	//配置mq
+	define.GlobalProducer, err = rocketmq.NewProducer(
+		producer.WithGroupName(mqConfig.Group),
+		producer.WithNameServer([]string{fmt.Sprintf("%s:%d", mqConfig.Host, mqConfig.Port)}),
+	)
+	if err != nil {
+		log.Fatalf("Failed to initialize RocketMQ producer: %v", err)
+	}
+	err = define.GlobalProducer.Start()
+	if err != nil {
+		log.Fatalf("Failed to start RocketMQ producer: %v", err)
+	}
 }
 
 func main() {
 	// 使用全局配置中的端口
+	for chainName, _ := range define.GlobalConfig.Fabric {
+		err := utils.InitializeSDKByChainName(chainName)
+		if err != nil {
+			log.Fatalf("初始化SDK失败: %v", err)
+			return
+		}
+	}
 	port := define.GlobalConfig.Server.Port
 	useRouter := router.SetUpRouter()
 

@@ -15,7 +15,7 @@ func InitializeSDKByChainName(fabricName string) error {
 	if !exists {
 		return errors.New(fmt.Sprintf("%s is not exists", fabricName))
 	}
-	err := service.InitFabric2Service(network.ConfigFilePath)
+	err := service.InitFabric2Service(network.ConfigFilePath, fabricName)
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,8 @@ Please review third_party pinning scripts and patches for more details.
 package sw
 
 import (
+	"gitee.com/china_uni/tjfoc-gm/sm3"
+	"github.com/qctc/fabric2-api-server/define"
 	"hash"
 
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/bccsp"
@@ -31,7 +33,12 @@ type hasher struct {
 }
 
 func (c *hasher) Hash(msg []byte, opts bccsp.HashOpts) ([]byte, error) {
-	h := c.hash()
+	var h hash.Hash
+	if define.GlobalConfig.ChainType == "qbaas" {
+		h = sm3.New()
+	} else {
+		h = c.hash()
+	}
 	h.Write(msg)
 	return h.Sum(nil), nil
 }

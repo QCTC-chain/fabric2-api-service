@@ -1,11 +1,15 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/service"
 	"github.com/qctc/fabric2-api-server/utils"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,18 +32,20 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 		Peers:    peers,
 		UserName: userName,
 	}
-	err := utils.UpdateUserInConfig(userConfig, chainName)
+	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-
-	err = utils.InitializeSDKByChainName(chainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(chainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
-	fabric2Service := service.GetFabric2Service()
+
+	fabric2Service := service.GetFabric2Service(chainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -84,18 +90,20 @@ func GetContractInfo(w http.ResponseWriter, r *http.Request) {
 		Peers:    peers,
 		UserName: userName,
 	}
-	err := utils.UpdateUserInConfig(userConfig, chainName)
+	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-	err = utils.InitializeSDKByChainName(chainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(chainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
 
-	fabric2Service := service.GetFabric2Service()
+	fabric2Service := service.GetFabric2Service(chainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -121,25 +129,30 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channel_id, chaincode and function are required")
 		return
 	}
-	//err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
-	//if err != nil {
-	//	utils.BadRequest(w, "UpdateUserInConfig error")
-	//	return
-	//}
-
-	err := utils.InitializeSDKByChainName(req.ChainName)
+	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(req.ChainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
+	}
 
-	fabric2Service := service.GetFabric2Service()
+	fabric2Service := service.GetFabric2Service(req.ChainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
 	}
-
-	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeID, req.Method, req.Args)
+	// 将 args 转为 [][]byte
+	args := make([][]byte, len(req.Args))
+	for i, arg := range req.Args {
+		args[i] = []byte(arg)
+	}
+	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeID, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -161,18 +174,20 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channel_id, chaincode and function are required")
 		return
 	}
-	err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-
-	err = utils.InitializeSDKByChainName(req.ChainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(req.ChainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
-	fabric2Service := service.GetFabric2Service()
+
+	fabric2Service := service.GetFabric2Service(req.ChainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -208,19 +223,20 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channelId, chaincode are required")
 		return
 	}
-	err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-
-	err = utils.InitializeSDKByChainName(req.ChainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(req.ChainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
 
-	fabric2Service := service.GetFabric2Service()
+	fabric2Service := service.GetFabric2Service(req.ChainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -235,12 +251,23 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	utils.Success(w, regID)
 
 	// 模拟简单事件监听逻辑（实际推荐使用 WebSocket）
-	select {
-	case event := <-eventCh:
-		utils.Success(w, map[string]interface{}{
-			"event": event,
-		})
-	}
+	go func() {
+		for {
+			select {
+			case event := <-eventCh:
+				message := &primitive.Message{
+					Topic: define.GlobalConfig.MQ.Topic,
+					Body:  []byte(fmt.Sprintf("%v", event)), // 可以根据实际格式序列化 event
+				}
+				_, err := define.GlobalProducer.SendSync(context.Background(), message)
+				if err != nil {
+					log.Printf("Failed to send message to RocketMQ: %v", err)
+				} else {
+					log.Printf("Event sent to RocketMQ: %v", event)
+				}
+			}
+		}
+	}()
 }
 
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
@@ -254,19 +281,20 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channelId, chaincode are required")
 		return
 	}
-	err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-
-	err = utils.InitializeSDKByChainName(req.ChainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(req.ChainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
 
-	fabric2Service := service.GetFabric2Service()
+	fabric2Service := service.GetFabric2Service(req.ChainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -280,6 +308,8 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	utils.Success(w, map[string]interface{}{
 		"message": "unsubscribed successfully",
 	})
+
+	define.GlobalProducer.Shutdown()
 }
 
 func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
@@ -311,17 +341,20 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 		Peers:    peers,
 		UserName: userName,
 	}
-	err = utils.UpdateUserInConfig(userConfig, chainName)
+	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-	err = utils.InitializeSDKByChainName(chainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(chainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
-	fabric2Service := service.GetFabric2Service()
+
+	fabric2Service := service.GetFabric2Service(chainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return
@@ -359,17 +392,20 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 		Peers:    peers,
 		UserName: userName,
 	}
-	err := utils.UpdateUserInConfig(userConfig, chainName)
+	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
 		return
 	}
-	err = utils.InitializeSDKByChainName(chainName)
-	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-		return
+	if !isOldSDK {
+		err = utils.InitializeSDKByChainName(chainName)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
+			return
+		}
 	}
-	fabric2Service := service.GetFabric2Service()
+
+	fabric2Service := service.GetFabric2Service(chainName)
 	if fabric2Service == nil {
 		utils.BadRequest(w, "Fabric2Service is not initialized")
 		return

@@ -1,6 +1,19 @@
 package define
 
+import "github.com/apache/rocketmq-client-go/v2"
+
 var GlobalConfig *Config
+var GlobalProducer rocketmq.Producer
+
+type MQConfig struct {
+	Type     string `yaml:"type"`     // 消息队列类型（如 rocketmq）
+	Host     string `yaml:"host"`     // 主机地址
+	Port     int    `yaml:"port"`     // 端口
+	UserName string `yaml:"userName"` // 用户名
+	Password string `yaml:"password"` // 密码
+	Topic    string `yaml:"topic"`    // 主题
+	Group    string `yaml:"group"`    // 消费组
+}
 
 type Config struct {
 	Server struct {
@@ -8,6 +21,10 @@ type Config struct {
 	} `yaml:"server"`
 
 	Fabric map[string]FabricNetwork `yaml:"fabric"`
+
+	ChainType string `yaml:"chainType"`
+
+	MQ MQConfig `yaml:"mq"` // 添加 mq 的配置
 }
 
 type FabricNetwork struct {
@@ -89,7 +106,7 @@ type ContractInvokeRequest struct {
 	ChannelID   string            `json:"channelId"`
 	ChaincodeID string            `json:"chaincodeId"`
 	Method      string            `json:"method"`
-	Args        [][]byte          `json:"args"`
+	Args        []string          `json:"args"`
 }
 
 // ContractQueryRequest 合约查询请求参数
