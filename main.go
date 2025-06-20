@@ -6,11 +6,13 @@ import (
 	"github.com/apache/rocketmq-client-go/v2/producer"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/router"
+	"github.com/qctc/fabric2-api-server/service"
 	"github.com/qctc/fabric2-api-server/utils"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 //	func main() {
@@ -61,7 +63,45 @@ func main() {
 	}
 	port := define.GlobalConfig.Server.Port
 	useRouter := router.SetUpRouter()
+	defer func() {
+		log.Println("开始执行清理任务...")
+
+		// 关闭 RocketMQ Producer
+		if define.GlobalProducer != nil {
+			if err := define.GlobalProducer.Shutdown(); err != nil {
+				log.Printf("RocketMQ Producer 关闭失败: %v", err)
+			} else {
+				log.Println("RocketMQ Producer 已关闭")
+			}
+		}
+
+		// 取消所有事件订阅
+		unsubscribeAll()
+
+		log.Println("清理任务完成，服务即将退出。")
+	}()
 
 	log.Printf("服务器正在端口 %d 上运行...", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), useRouter))
+}
+
+func unsubscribeAll() {
+	define.SubscriptionMutex.RLock()
+	defer define.SubscriptionMutex.RUnlock()
+
+	for key, regID := range define.EventSubscriptions {
+		parts := strings.Split(key, ":")
+		if len(parts) < 3 {
+			continue
+		}
+		chainName, channelID, chaincodeID := parts[0], parts[1], parts[2]
+
+		fabric2Service := service.GetFabric2Service(chainName)
+		if fabric2Service == nil {
+			continue
+		}
+
+		_ = fabric2Service.UnsubscribeEvent(channelID, chaincodeID, regID)
+		log.Printf("已取消订阅: %s", key)
+	}
 }

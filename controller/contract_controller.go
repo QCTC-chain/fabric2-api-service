@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/service"
 	"github.com/qctc/fabric2-api-server/utils"
@@ -71,7 +70,7 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 
 func GetContractInfo(w http.ResponseWriter, r *http.Request) {
 	channelID := r.URL.Query().Get("channelId")
-	chaincodeName := r.URL.Query().Get("chaincodeId")
+	chaincodeName := r.URL.Query().Get("chaincodeName")
 	chainName := r.URL.Query().Get("chainName")
 	if channelID == "" || chaincodeName == "" {
 		utils.BadRequest(w, "channelId and chaincode are required")
@@ -131,7 +130,7 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ChannelID == "" || req.ChaincodeID == "" || req.Method == "" {
+	if req.ChannelID == "" || req.ChaincodeName == "" || req.Method == "" {
 		utils.BadRequest(w, "channel_id, chaincode and function are required")
 		return
 	}
@@ -162,7 +161,7 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 	for i, arg := range req.Args {
 		args[i] = []byte(arg)
 	}
-	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeID, req.Method, args)
+	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -224,8 +223,6 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-var eventSubscriptions = make(map[string]fab.Registration)
-
 func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	var req define.ContractEventSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -266,9 +263,18 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.Success(w, regID)
+	// 构造唯一 key
+	key := fmt.Sprintf("%s:%s:%s", req.ChainName, req.ChannelID, req.ChaincodeID)
 
-	// 模拟简单事件监听逻辑（实际推荐使用 WebSocket）
+	// 存储 regID
+	define.SubscriptionMutex.Lock()
+	define.EventSubscriptions[key] = regID
+	define.SubscriptionMutex.Unlock()
+
+	utils.Success(w, map[string]interface{}{
+		"payload": "subscribed successfully",
+	})
+	// 模拟简单事件监听逻辑
 	go func() {
 		for {
 			select {
@@ -286,6 +292,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
+
 }
 
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
@@ -322,11 +329,27 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = fabric2Service.UnsubscribeEvent(req.ChannelID, req.ChaincodeID, req.RegId)
+	// 构造 key
+	key := fmt.Sprintf("%s:%s:%s", req.ChainName, req.ChannelID, req.ChaincodeID)
+
+	// 获取 regID
+	define.SubscriptionMutex.Lock()
+	regID, exists := define.EventSubscriptions[key]
+	define.SubscriptionMutex.RUnlock()
+	if !exists {
+		utils.BadRequest(w, "subscription not found")
+		return
+	}
+	err = fabric2Service.UnsubscribeEvent(req.ChannelID, req.ChaincodeID, regID)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
+	// 删除缓存
+	define.SubscriptionMutex.Lock()
+	delete(define.EventSubscriptions, key)
+	define.SubscriptionMutex.RUnlock()
+
 	utils.Success(w, map[string]interface{}{
 		"message": "unsubscribed successfully",
 	})

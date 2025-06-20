@@ -169,8 +169,14 @@ func (s *Fabric2Service) SubscribeEvent(channelID, chaincodeName string) (fab.Re
 		return nil, nil, err
 	}
 
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	eventContext := s.sdk.ChannelContext(
 		channelID,
+		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
 
@@ -230,8 +236,14 @@ func (s *Fabric2Service) GetBlockInfo(channelID string, blockNumber uint64) (*co
 		return nil, err
 	}
 
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
 	ledgerContext := s.sdk.ChannelContext(
 		channelID,
+		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
 
@@ -256,8 +268,14 @@ func (s *Fabric2Service) UnsubscribeEvent(channelID, chaincodeName string, regID
 		return err
 	}
 
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return err
+	}
+
 	eventContext := s.sdk.ChannelContext(
 		channelID,
+		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
 
@@ -277,7 +295,6 @@ func (s *Fabric2Service) TestConnection() error {
 		log.Println("Failed to get organization name")
 		return err
 	}
-
 	orgAdmin, err := s.getOrgAdmin(orgName)
 	if err != nil {
 		log.Println("Failed to get organization admin")
@@ -313,9 +330,14 @@ func (s *Fabric2Service) GetTransactionInfo(channelID, txID string) (*pb.Process
 	if err != nil {
 		return nil, err
 	}
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
 
 	ledgerContext := s.sdk.ChannelContext(
 		channelID,
+		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
 

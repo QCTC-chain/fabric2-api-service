@@ -1,9 +1,18 @@
 package define
 
-import "github.com/apache/rocketmq-client-go/v2"
+import (
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
+	"sync"
+)
 
-var GlobalConfig *Config
-var GlobalProducer rocketmq.Producer
+var (
+	GlobalConfig   *Config
+	GlobalProducer rocketmq.Producer
+
+	EventSubscriptions = make(map[string]fab.Registration) // key: uuid
+	SubscriptionMutex  = &sync.RWMutex{}
+)
 
 type MQConfig struct {
 	Type     string `yaml:"type"`     // 消息队列类型（如 rocketmq）
@@ -101,12 +110,12 @@ type UserConfigRequest struct {
 
 // ContractInvokeRequest 合约调用请求参数
 type ContractInvokeRequest struct {
-	UserConfig  UserConfigRequest `json:"userConfig"`
-	ChainName   string            `json:"chainName"`
-	ChannelID   string            `json:"channelId"`
-	ChaincodeID string            `json:"chaincodeId"`
-	Method      string            `json:"method"`
-	Args        []string          `json:"args"`
+	UserConfig    UserConfigRequest `json:"userConfig"`
+	ChainName     string            `json:"chainName"`
+	ChannelID     string            `json:"channelId"`
+	ChaincodeName string            `json:"chaincodeName"`
+	Method        string            `json:"method"`
+	Args          []string          `json:"args"`
 }
 
 // ContractQueryRequest 合约查询请求参数
@@ -132,5 +141,4 @@ type ContractEventUnSubscribeRequest struct {
 	ChainName   string            `json:"chainName"`
 	ChannelID   string            `json:"channelId"`
 	ChaincodeID string            `json:"chaincodeId"`
-	RegId       string            `json:"regId"`
 }
