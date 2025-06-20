@@ -22,6 +22,10 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 	userName := r.URL.Query().Get("userName")
 	pathId := r.URL.Query().Get("pathId")
 	peerList := r.URL.Query().Get("peers")
+	if mspId == "" || userName == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	var peers []string
 	if peerList != "" {
 		peers = strings.Split(peerList, ",")
@@ -51,14 +55,12 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	channelID := r.URL.Query().Get(channelId)
-
-	if channelID == "" {
+	if channelId == "" {
 		utils.BadRequest(w, "channelId is required")
 		return
 	}
 
-	contracts, err := fabric2Service.GetContractList(channelID)
+	contracts, err := fabric2Service.GetContractList(channelId)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -80,6 +82,10 @@ func GetContractInfo(w http.ResponseWriter, r *http.Request) {
 	userName := r.URL.Query().Get("userName")
 	pathId := r.URL.Query().Get("pathId")
 	peerList := r.URL.Query().Get("peers")
+	if mspId == "" || userName == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	var peers []string
 	if peerList != "" {
 		peers = strings.Split(peerList, ",")
@@ -129,6 +135,10 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channel_id, chaincode and function are required")
 		return
 	}
+	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
@@ -172,6 +182,10 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 
 	if req.ChannelID == "" || req.ChaincodeID == "" || req.Method == "" {
 		utils.BadRequest(w, "channel_id, chaincode and function are required")
+		return
+	}
+	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
 		return
 	}
 	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
@@ -221,6 +235,10 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 
 	if req.ChannelID == "" || req.ChaincodeID == "" {
 		utils.BadRequest(w, "channelId, chaincode are required")
+		return
+	}
+	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
 		return
 	}
 	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
@@ -281,6 +299,10 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "channelId, chaincode are required")
 		return
 	}
+	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
 	if err != nil {
 		utils.BadRequest(w, "UpdateUserInConfig error")
@@ -331,6 +353,10 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 	userName := r.URL.Query().Get("userName")
 	pathId := r.URL.Query().Get("pathId")
 	peerList := r.URL.Query().Get("peers")
+	if userName == "" || mspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	var peers []string
 	if peerList != "" {
 		peers = strings.Split(peerList, ",")
@@ -382,6 +408,10 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 	userName := r.URL.Query().Get("userName")
 	pathId := r.URL.Query().Get("pathId")
 	peerList := r.URL.Query().Get("peers")
+	if userName == "" || mspId == "" {
+		utils.BadRequest(w, "userName and mspId are required")
+		return
+	}
 	var peers []string
 	if peerList != "" {
 		peers = strings.Split(peerList, ",")
