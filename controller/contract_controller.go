@@ -6,60 +6,24 @@ import (
 	"fmt"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/qctc/fabric2-api-server/define"
-	"github.com/qctc/fabric2-api-server/service"
 	"github.com/qctc/fabric2-api-server/utils"
 	"log"
 	"net/http"
-	"strconv"
-	"strings"
 )
 
 func GetContractList(w http.ResponseWriter, r *http.Request) {
-	chainName := r.URL.Query().Get("chainName")
-	channelId := r.URL.Query().Get("channelId")
-	mspId := r.URL.Query().Get("mspId")
-	userName := r.URL.Query().Get("userName")
-	pathId := r.URL.Query().Get("pathId")
-	peerList := r.URL.Query().Get("peers")
-	if mspId == "" || userName == "" {
-		utils.BadRequest(w, "userName and mspId are required")
+	var req define.SdkConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	var peers []string
-	if peerList != "" {
-		peers = strings.Split(peerList, ",")
-	}
-	var userConfig = define.UserConfigRequest{
-		MspId:    mspId,
-		PathId:   pathId,
-		Peers:    peers,
-		UserName: userName,
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(chainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(chainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
-	if channelId == "" {
-		utils.BadRequest(w, "channelId is required")
-		return
-	}
-
-	contracts, err := fabric2Service.GetContractList(channelId)
+	contracts, err := sdk.GetContractList()
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -69,52 +33,18 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetContractInfo(w http.ResponseWriter, r *http.Request) {
-	channelID := r.URL.Query().Get("channelId")
-	chaincodeName := r.URL.Query().Get("chaincodeName")
-	chainName := r.URL.Query().Get("chainName")
-	if channelID == "" || chaincodeName == "" {
-		utils.BadRequest(w, "channelId and chaincode are required")
+	var req define.ContractListRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	mspId := r.URL.Query().Get("mspId")
-	userName := r.URL.Query().Get("userName")
-	pathId := r.URL.Query().Get("pathId")
-	peerList := r.URL.Query().Get("peers")
-	if mspId == "" || userName == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	var peers []string
-	if peerList != "" {
-		peers = strings.Split(peerList, ",")
-	}
-	var userConfig = define.UserConfigRequest{
-		MspId:    mspId,
-		PathId:   pathId,
-		Peers:    peers,
-		UserName: userName,
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(chainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(chainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
-	info, err := fabric2Service.GetContractInfo(channelID, chaincodeName)
+	info, err := sdk.GetContractInfo(req.ChaincodeName)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -129,31 +59,9 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	if req.ChannelID == "" || req.ChaincodeName == "" || req.Method == "" {
-		utils.BadRequest(w, "channel_id, chaincode and function are required")
-		return
-	}
-	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(req.ChainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(req.ChainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 	// 将 args 转为 [][]byte
@@ -161,7 +69,7 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 	for i, arg := range req.Args {
 		args[i] = []byte(arg)
 	}
-	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeName, req.Method, args)
+	resp, err := sdk.InvokeContract(req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -178,31 +86,9 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	if req.ChannelID == "" || req.ChaincodeID == "" || req.Method == "" {
-		utils.BadRequest(w, "channel_id, chaincode and function are required")
-		return
-	}
-	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(req.ChainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(req.ChainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
@@ -212,7 +98,7 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		args[i] = []byte(arg)
 	}
 
-	resp, err := fabric2Service.InvokeContract(req.ChannelID, req.ChaincodeID, req.Method, args)
+	resp, err := sdk.InvokeContract(req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -229,42 +115,20 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	if req.ChannelID == "" || req.ChaincodeID == "" {
-		utils.BadRequest(w, "channelId, chaincode are required")
-		return
-	}
-	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(req.ChainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(req.ChainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
-	regID, eventCh, err := fabric2Service.SubscribeEvent(req.ChannelID, req.ChaincodeID)
+	regID, eventCh, err := sdk.SubscribeEvent(req.ChaincodeName, req.EventName)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
-
+	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
 	// 构造唯一 key
-	key := fmt.Sprintf("%s:%s:%s", req.ChainName, req.ChannelID, req.ChaincodeID)
+	key := fmt.Sprintf("%s:%s:%s", sdkId, req.ChaincodeName, req.EventName)
 
 	// 存储 regID
 	define.SubscriptionMutex.Lock()
@@ -296,41 +160,21 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
-	var req define.ContractEventUnSubscribeRequest
+	var req define.ContractEventSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	if req.ChannelID == "" || req.ChaincodeID == "" {
-		utils.BadRequest(w, "channelId, chaincode are required")
-		return
-	}
-	if req.UserConfig.UserName == "" || req.UserConfig.MspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(req.UserConfig, req.ChainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(req.ChainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(req.ChainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
+	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
+	// 构造唯一 key
+	key := fmt.Sprintf("%s:%s:%s", sdkId, req.ChaincodeName, req.EventName)
 	// 构造 key
-	key := fmt.Sprintf("%s:%s:%s", req.ChainName, req.ChannelID, req.ChaincodeID)
 
 	// 获取 regID
 	define.SubscriptionMutex.Lock()
@@ -340,7 +184,7 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "subscription not found")
 		return
 	}
-	err = fabric2Service.UnsubscribeEvent(req.ChannelID, req.ChaincodeID, regID)
+	err = sdk.UnsubscribeEvent(regID)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -358,58 +202,17 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
-	channelID := r.URL.Query().Get("channelId")
-	blockNumberStr := r.URL.Query().Get("blockNumber")
-	chainName := r.URL.Query().Get("chainName")
-
-	if channelID == "" || blockNumberStr == "" {
-		utils.BadRequest(w, "channel_id and block_number are required")
+	var req define.GetBlockRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-
-	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "invalid block_number format")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
-	mspId := r.URL.Query().Get("mspId")
-	userName := r.URL.Query().Get("userName")
-	pathId := r.URL.Query().Get("pathId")
-	peerList := r.URL.Query().Get("peers")
-	if userName == "" || mspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	var peers []string
-	if peerList != "" {
-		peers = strings.Split(peerList, ",")
-	}
-	var userConfig = define.UserConfigRequest{
-		MspId:    mspId,
-		PathId:   pathId,
-		Peers:    peers,
-		UserName: userName,
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
-	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(chainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(chainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
-		return
-	}
-
-	block, err := fabric2Service.GetBlockInfo(channelID, blockNumber)
+	block, err := sdk.GetBlockInfo(req.BlockNumber)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -419,52 +222,18 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
-	channelID := r.URL.Query().Get("channelId")
-	txID := r.URL.Query().Get("txId")
-	chainName := r.URL.Query().Get("chainName")
-
-	if channelID == "" || txID == "" {
-		utils.BadRequest(w, "channelId and txId are required")
+	var req define.GetTxRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	mspId := r.URL.Query().Get("mspId")
-	userName := r.URL.Query().Get("userName")
-	pathId := r.URL.Query().Get("pathId")
-	peerList := r.URL.Query().Get("peers")
-	if userName == "" || mspId == "" {
-		utils.BadRequest(w, "userName and mspId are required")
-		return
-	}
-	var peers []string
-	if peerList != "" {
-		peers = strings.Split(peerList, ",")
-	}
-	var userConfig = define.UserConfigRequest{
-		MspId:    mspId,
-		PathId:   pathId,
-		Peers:    peers,
-		UserName: userName,
-	}
-	isOldSDK, err := utils.UpdateUserInConfig(userConfig, chainName)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
 	if err != nil {
-		utils.BadRequest(w, "UpdateUserInConfig error")
-		return
-	}
-	if !isOldSDK {
-		err = utils.InitializeSDKByChainName(chainName)
-		if err != nil {
-			utils.Error(w, http.StatusInternalServerError, "Failed to initialize SDK", err)
-			return
-		}
-	}
-
-	fabric2Service := service.GetFabric2Service(chainName)
-	if fabric2Service == nil {
-		utils.BadRequest(w, "Fabric2Service is not initialized")
+		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
 
-	tx, err := fabric2Service.GetTransactionInfo(channelID, txID)
+	tx, err := sdk.GetTransactionInfo(req.TxId)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return

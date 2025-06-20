@@ -1,10 +1,5 @@
 server:
   port: 9090
-
-#fabric 名称配置，不同链需要配置不同的链配置文件路径
-fabric:
-  fabric2:
-    configFilePath: "./fabric2/fabric2.yaml"
 mq:
   type: 'rocketmq'
   host: '192.168.1.45'

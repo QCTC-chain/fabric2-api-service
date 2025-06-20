@@ -24,9 +24,10 @@ type Fabric2Service struct {
 var fabric2ServiceInstance *Fabric2Service
 var Fabric2ServicePool map[string]*Fabric2Service
 
-func InitFabric2Service(configPath string, chainName string) error {
+func InitFabric2Service(configString string, sdkId string) error {
 	sdk, err := fabsdk.New(
-		config.FromFile(configPath),
+		//config.FromFile(configPath),
+		config.FromRaw([]byte(configString), "yaml"),
 		fabsdk.WithGMTLS(false),
 		fabsdk.WithTxTimeStamp(false))
 	if err != nil {
@@ -36,7 +37,7 @@ func InitFabric2Service(configPath string, chainName string) error {
 	if Fabric2ServicePool == nil {
 		Fabric2ServicePool = make(map[string]*Fabric2Service)
 	}
-	Fabric2ServicePool[chainName] = &Fabric2Service{sdk: sdk}
+	Fabric2ServicePool[sdkId] = &Fabric2Service{sdk: sdk}
 	return nil
 }
 
@@ -83,7 +84,29 @@ func (s *Fabric2Service) getOrgAdmin(orgName string) (string, error) {
 	return orgAdmin, nil
 }
 
-func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, error) {
+func (s *Fabric2Service) getChannelID() (string, error) {
+	sdkConfig, err := s.sdk.Config()
+	if err != nil {
+		return "", err
+	}
+
+	// 查找 "channels" 节点
+	channelsSection, ok := sdkConfig.Lookup("channels")
+	if !ok {
+		return "", errors.New("channels configuration not found")
+	}
+
+	channelsMap := channelsSection.(map[string]interface{})
+
+	// 遍历找到第一个 channel 名称
+	for channelID := range channelsMap {
+		return channelID, nil
+	}
+
+	return "", errors.New("no channel found in configuration")
+}
+
+func (s *Fabric2Service) GetContractList() ([]vo.ContractVO, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
@@ -102,6 +125,10 @@ func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, err
 		return nil, err
 	}
 
+	channelID, err := s.getChannelID()
+	if err != nil {
+		return nil, err
+	}
 	// 获取某个通道上已部署的 chaincode 列表
 	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{})
 	if err != nil {
@@ -121,13 +148,18 @@ func (s *Fabric2Service) GetContractList(channelID string) ([]vo.ContractVO, err
 }
 
 // GetContractInfo 获取合约信息
-func (s *Fabric2Service) GetContractInfo(channelID, chaincodeName string) (map[string]interface{}, error) {
+func (s *Fabric2Service) GetContractInfo(chaincodeName string) (map[string]interface{}, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelID, err := s.getChannelID()
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +195,18 @@ func (s *Fabric2Service) GetContractInfo(channelID, chaincodeName string) (map[s
 }
 
 // SubscribeEvent 订阅合约事件
-func (s *Fabric2Service) SubscribeEvent(channelID, chaincodeName string) (fab.Registration, <-chan *fab.CCEvent, error) {
+func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) (fab.Registration, <-chan *fab.CCEvent, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	channelID, err := s.getChannelID()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,7 +223,7 @@ func (s *Fabric2Service) SubscribeEvent(channelID, chaincodeName string) (fab.Re
 	}
 
 	// 注册事件监听
-	req, eventCh, err := eventClient.RegisterChaincodeEvent(chaincodeName, ".*")
+	req, eventCh, err := eventClient.RegisterChaincodeEvent(chaincodeName, eventName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -196,7 +233,7 @@ func (s *Fabric2Service) SubscribeEvent(channelID, chaincodeName string) (fab.Re
 }
 
 // InvokeContract 执行合约调用
-func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function string, args [][]byte) ([]byte, error) {
+func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][]byte) ([]byte, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
@@ -206,6 +243,12 @@ func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function strin
 	if err != nil {
 		return nil, err
 	}
+
+	channelID, err := s.getChannelID()
+	if err != nil {
+		return nil, err
+	}
+
 	channelContext := s.sdk.ChannelContext(
 		channelID,
 		fabsdk.WithUser(orgAdmin),
@@ -230,13 +273,18 @@ func (s *Fabric2Service) InvokeContract(channelID, chaincodeName, function strin
 }
 
 // GetBlockInfo 获取区块信息
-func (s *Fabric2Service) GetBlockInfo(channelID string, blockNumber uint64) (*common.Block, error) {
+func (s *Fabric2Service) GetBlockInfo(blockNumber uint64) (*common.Block, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelID, err := s.getChannelID()
 	if err != nil {
 		return nil, err
 	}
@@ -262,13 +310,17 @@ func (s *Fabric2Service) GetBlockInfo(channelID string, blockNumber uint64) (*co
 }
 
 // UnsubscribeEvent 取消事件订阅（需要传递注册ID）
-func (s *Fabric2Service) UnsubscribeEvent(channelID, chaincodeName string, regID fab.Registration) error {
+func (s *Fabric2Service) UnsubscribeEvent(regID fab.Registration) error {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return err
+	}
+	channelID, err := s.getChannelID()
 	if err != nil {
 		return err
 	}
@@ -325,12 +377,17 @@ func (s *Fabric2Service) TestConnection() error {
 }
 
 // GetTransactionInfo 获取指定交易的详细信息
-func (s *Fabric2Service) GetTransactionInfo(channelID, txID string) (*pb.ProcessedTransaction, error) {
+func (s *Fabric2Service) GetTransactionInfo(txID string) (*pb.ProcessedTransaction, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
 	}
 	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelID, err := s.getChannelID()
 	if err != nil {
 		return nil, err
 	}

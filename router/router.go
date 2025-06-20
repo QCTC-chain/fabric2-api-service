@@ -14,9 +14,9 @@ func SetUpRouter() *mux.Router {
 	//router.HandleFunc("/api/v1/service/instantiate", controller.InstantiateService).Methods("POST")
 
 	// 连接相关
-	router.HandleFunc("/api/v1/connect/test", controller.TestConnection).Methods("GET")
+	router.HandleFunc("/api/v1/connect/test", controller.TestConnection).Methods("POST")
 	// 合约相关
-	router.HandleFunc("/api/v1/contract/list", controller.GetContractList).Methods("GET")
+	router.HandleFunc("/api/v1/contract/list", controller.GetContractList).Methods("POST")
 	// 调用智能合约
 	router.HandleFunc("/api/v1/contract/sendTransaction", controller.InvokeContract).Methods("POST")
 
@@ -24,13 +24,13 @@ func SetUpRouter() *mux.Router {
 	router.HandleFunc("/api/v1/contract/call", controller.QueryContract).Methods("POST")
 
 	//获取合约信息
-	router.HandleFunc("/api/v1/contract/info", controller.GetContractInfo).Methods("GET")
+	router.HandleFunc("/api/v1/contract/info", controller.GetContractInfo).Methods("POST")
 
 	//获取区块信息
-	router.HandleFunc("/api/v1/block/info", controller.GetBlockInfo).Methods("GET")
+	router.HandleFunc("/api/v1/block/info", controller.GetBlockInfo).Methods("POST")
 
 	//获取交易信息
-	router.HandleFunc("/api/v1/transaction/info", controller.GetTransactionInfo).Methods("GET")
+	router.HandleFunc("/api/v1/transaction/info", controller.GetTransactionInfo).Methods("POST")
 
 	//订阅合约事件
 	router.HandleFunc("/api/v1/contract/subscribe", controller.SubscribeContractEvent).Methods("POST")

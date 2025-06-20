@@ -7,7 +7,6 @@ import (
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/router"
 	"github.com/qctc/fabric2-api-server/service"
-	"github.com/qctc/fabric2-api-server/utils"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -53,14 +52,6 @@ func init() {
 }
 
 func main() {
-	// 使用全局配置中的端口
-	for chainName, _ := range define.GlobalConfig.Fabric {
-		err := utils.InitializeSDKByChainName(chainName)
-		if err != nil {
-			log.Fatalf("初始化SDK失败: %v", err)
-			return
-		}
-	}
 	port := define.GlobalConfig.Server.Port
 	useRouter := router.SetUpRouter()
 	defer func() {
@@ -90,18 +81,13 @@ func unsubscribeAll() {
 	defer define.SubscriptionMutex.RUnlock()
 
 	for key, regID := range define.EventSubscriptions {
-		parts := strings.Split(key, ":")
+		parts := strings.Split(key, "-")
 		if len(parts) < 3 {
 			continue
 		}
-		chainName, channelID, chaincodeID := parts[0], parts[1], parts[2]
-
-		fabric2Service := service.GetFabric2Service(chainName)
-		if fabric2Service == nil {
-			continue
-		}
-
-		_ = fabric2Service.UnsubscribeEvent(channelID, chaincodeID, regID)
+		sdkID := parts[0]
+		sdk, _ := service.Fabric2ServicePool[sdkID]
+		_ = sdk.UnsubscribeEvent(regID)
 		log.Printf("已取消订阅: %s", key)
 	}
 }
