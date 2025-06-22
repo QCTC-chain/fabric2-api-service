@@ -39,7 +39,7 @@ func InternalServerError(w http.ResponseWriter, err error) {
 // ResponseJSON 返回JSON响应
 func ResponseJSON(w http.ResponseWriter, code int, message string, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
+	w.WriteHeader(http.StatusOK)
 	errCode := 0
 	if code != http.StatusOK {
 		errCode = code
