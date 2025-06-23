@@ -98,7 +98,7 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		args[i] = []byte(arg)
 	}
 
-	resp, err := sdk.InvokeContract(req.ChaincodeName, req.Method, args)
+	resp, err := sdk.QueryContract(req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return

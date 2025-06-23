@@ -106,6 +106,29 @@ func (s *Fabric2Service) getChannelID() (string, error) {
 	return "", errors.New("no channel found in configuration")
 }
 
+func (s *Fabric2Service) getPeers() ([]string, error) {
+	sdkConfig, err := s.sdk.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	// 查找 "peers" 节点
+	peersSection, ok := sdkConfig.Lookup("peers")
+	if !ok {
+		return nil, errors.New("peers configuration not found")
+	}
+
+	peersMap := peersSection.(map[string]interface{})
+
+	// 提取所有 Peer 名称
+	var peerNames []string
+	for peerName := range peersMap {
+		peerNames = append(peerNames, peerName)
+	}
+
+	return peerNames, nil
+}
+
 func (s *Fabric2Service) GetContractList() ([]vo.ContractVO, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
@@ -114,23 +137,30 @@ func (s *Fabric2Service) GetContractList() ([]vo.ContractVO, error) {
 
 	// 创建管理用户的上下文
 	orgAdmin, err := s.getOrgAdmin(orgName)
+
 	if err != nil {
 		return nil, err
 	}
-	resourceManagerContext := s.sdk.Context(fabsdk.WithUser(orgAdmin), fabsdk.WithOrg(orgName))
 
+	//获取peer
+	peers, err := s.getPeers()
+	if err != nil {
+		return nil, err
+	}
+	resourceManagerContext := s.sdk.Context(
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName))
 	// 创建 resmgmt client
 	resMgmtClient, err := resmgmt.New(resourceManagerContext)
 	if err != nil {
 		return nil, err
 	}
-
 	channelID, err := s.getChannelID()
 	if err != nil {
 		return nil, err
 	}
 	// 获取某个通道上已部署的 chaincode 列表
-	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{})
+	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{}, resmgmt.WithTargetEndpoints(peers...))
 	if err != nil {
 		log.Printf("Failed to query committed chaincodes: %v", err)
 		return nil, err
@@ -260,6 +290,46 @@ func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][
 	}
 	// 执行链码调用
 	response, err := channelClient.Execute(channel.Request{
+		ChaincodeID: chaincodeName,
+		Fcn:         function,
+		Args:        args,
+	})
+	if err != nil {
+		log.Printf("execute is error %s", err)
+		return nil, err
+	}
+
+	return response.Payload, nil
+}
+
+// QueryContract 查询合约调用
+func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]byte) ([]byte, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelID, err := s.getChannelID()
+	if err != nil {
+		return nil, err
+	}
+
+	channelContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName),
+	)
+	channelClient, err := channel.New(channelContext)
+	if err != nil {
+		return nil, err
+	}
+	// 执行链码调用
+	response, err := channelClient.Query(channel.Request{
 		ChaincodeID: chaincodeName,
 		Fcn:         function,
 		Args:        args,
