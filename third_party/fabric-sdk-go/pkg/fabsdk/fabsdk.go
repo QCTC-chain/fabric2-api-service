@@ -35,13 +35,14 @@ var logger = logging.NewLogger("fabsdk")
 
 // FabricSDK provides access (and context) to clients being managed by the SDK.
 type FabricSDK struct {
-	opts          options
-	provider      *context.Provider
-	cryptoSuite   core.CryptoSuite
-	system        *operations.System
-	clientMetrics *metrics.ClientMetrics
-	enableGMTLS   bool //add by liuhy for gm tls
+	opts              options
+	provider          *context.Provider
+	cryptoSuite       core.CryptoSuite
+	system            *operations.System
+	clientMetrics     *metrics.ClientMetrics
+	enableGMTLS       bool //add by liuhy for gm tls
 	enableTxTimeStamp bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	enableSM3         bool
 }
 
 type configs struct {
@@ -62,8 +63,9 @@ type options struct {
 	ConfigBackend     []core.ConfigBackend
 	ProviderOpts      []coptions.Opt // Provider options are passed along to the various providers
 	metricsConfig     metricsCfg.MetricsConfig
-	withGMTLS           bool // jzk, set gm by opts rather than args of function
-	txWithTimeStamp bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	withGMTLS         bool // jzk, set gm by opts rather than args of function
+	txWithTimeStamp   bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	withSM3           bool
 }
 
 // Option configures the SDK.
@@ -79,7 +81,7 @@ type contextCloseable interface {
 
 // New initializes the SDK based on the set of options provided.
 // ConfigOptions provides the application configuration.
-//modify by liuhy for gm tls
+// modify by liuhy for gm tls
 func New(configProvider core.ConfigProvider, opts ...Option) (*FabricSDK, error) {
 	pkgSuite := defPkgSuite{}
 	return fromPkgSuite(configProvider, &pkgSuite, opts...)
@@ -199,6 +201,13 @@ func WithGMTLS(enable bool) Option {
 	}
 }
 
+func WithSM3(enable bool) Option {
+	return func(opts *options) error {
+		opts.withSM3 = enable
+		return nil
+	}
+}
+
 // WithServicePkg injects the service implementation into the SDK.
 func WithServicePkg(service sdkApi.ServiceProviderFactory) Option {
 	return func(opts *options) error {
@@ -247,7 +256,7 @@ func WithErrorHandler(value fab.ErrorHandler) Option {
 // providerInit interface allows for initializing providers
 // TODO: minimize interface
 type providerInit interface {
-	Initialize(isGMTLS, enableTxTimeStamp bool, providers contextApi.Providers) error
+	Initialize(isGMTLS, enableTxTimeStamp, isSM3 bool, providers contextApi.Providers) error
 }
 
 func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) error { //nolint
@@ -263,6 +272,8 @@ func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) 
 
 	// jzk, set gm by opts rather than args of function
 	sdk.enableGMTLS = sdk.opts.withGMTLS
+
+	sdk.enableSM3 = sdk.opts.withSM3
 
 	// Initialize logging provider with default logging provider (if needed)
 	if sdk.opts.Logger == nil {
@@ -286,7 +297,7 @@ func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) 
 	}
 
 	// Initialize Signing Manager
-	signingManager, err := sdk.opts.Core.CreateSigningManager(sdk.cryptoSuite)
+	signingManager, err := sdk.opts.Core.CreateSigningManager(sdk.cryptoSuite, sdk.opts.withGMTLS)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create signing manager")
 	}
@@ -310,7 +321,7 @@ func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) 
 	}
 
 	// jzk, tx with timestamp, for fabric 1.4.8-enhanced
-	sdk.opts.ProviderOpts = append(sdk.opts.ProviderOpts,chpvdr.WithTxTimeStamp(sdk.enableTxTimeStamp))
+	sdk.opts.ProviderOpts = append(sdk.opts.ProviderOpts, chpvdr.WithTxTimeStamp(sdk.enableTxTimeStamp))
 	channelProvider, err := sdk.opts.Service.CreateChannelProvider(cfg.endpointConfig, sdk.opts.ProviderOpts...)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create channel provider")
@@ -334,21 +345,21 @@ func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) 
 
 	//initialize
 	if pi, ok := infraProvider.(providerInit); ok {
-		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.provider)  // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.enableSM3, sdk.provider) // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 		if err != nil {
 			return errors.WithMessage(err, "failed to initialize infra provider")
 		}
 	}
 
 	if pi, ok := localDiscoveryProvider.(providerInit); ok {
-		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.provider) // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.enableSM3, sdk.provider) // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 		if err != nil {
 			return errors.WithMessage(err, "failed to initialize local discovery provider")
 		}
 	}
 
 	if pi, ok := channelProvider.(providerInit); ok {
-		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.provider) // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+		err = pi.Initialize(sdk.enableGMTLS, sdk.enableTxTimeStamp, sdk.enableSM3, sdk.provider) // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 		if err != nil {
 			return errors.WithMessage(err, "failed to initialize channel provider")
 		}
@@ -383,7 +394,7 @@ func (sdk *FabricSDK) CloseContext(ctxt fab.ClientContext) {
 	}
 }
 
-//Config returns config backend used by all SDK config types
+// Config returns config backend used by all SDK config types
 func (sdk *FabricSDK) Config() (core.ConfigBackend, error) {
 	if sdk.opts.ConfigBackend == nil {
 		return nil, errors.New("unable to find config backend")
@@ -391,7 +402,7 @@ func (sdk *FabricSDK) Config() (core.ConfigBackend, error) {
 	return lookup.New(sdk.opts.ConfigBackend...), nil
 }
 
-//Context creates and returns context client which has all the necessary providers
+// Context creates and returns context client which has all the necessary providers
 func (sdk *FabricSDK) Context(options ...ContextOption) contextApi.ClientProvider {
 
 	clientProvider := func() (contextApi.Client, error) {
@@ -406,7 +417,7 @@ func (sdk *FabricSDK) Context(options ...ContextOption) contextApi.ClientProvide
 	return clientProvider
 }
 
-//ChannelContext creates and returns channel context
+// ChannelContext creates and returns channel context
 func (sdk *FabricSDK) ChannelContext(channelID string, options ...ContextOption) contextApi.ChannelProvider {
 
 	channelProvider := func() (contextApi.Channel, error) {
@@ -439,7 +450,7 @@ func (sdk *FabricSDK) initializeCryptoSuite(cryptoSuiteConfig core.CryptoSuiteCo
 	return nil
 }
 
-//loadConfigs load config from config backend when configs are not provided through opts
+// loadConfigs load config from config backend when configs are not provided through opts
 func (sdk *FabricSDK) loadConfigs(configProvider core.ConfigProvider) (*configs, error) {
 	c := &configs{
 		identityConfig:    sdk.opts.IdentityConfig,
@@ -494,7 +505,7 @@ func (sdk *FabricSDK) loadConfigs(configProvider core.ConfigProvider) (*configs,
 	return c, nil
 }
 
-//loadEndpointConfig loads config from config backend when configs are not provided through opts or override missing interfaces from opts with config backend
+// loadEndpointConfig loads config from config backend when configs are not provided through opts or override missing interfaces from opts with config backend
 func (sdk *FabricSDK) loadEndpointConfig(configBackend ...core.ConfigBackend) (fab.EndpointConfig, error) {
 	endpointConfigOpt, ok := sdk.opts.endpointConfig.(*fabImpl.EndpointConfigOptions)
 

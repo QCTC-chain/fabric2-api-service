@@ -11,6 +11,7 @@ import (
 	// "crypto/x509"
 	"gitee.com/china_uni/tjfoc-gm/tls"
 	"gitee.com/china_uni/tjfoc-gm/x509"
+	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
 	"github.com/pkg/errors"
@@ -18,7 +19,7 @@ import (
 
 // TLSConfig returns the appropriate config for TLS including the root CAs,
 // certs for mutual TLS, and server host override. Works with certs loaded either from a path or embedded pem.
-//modify by liuhy for gm tls
+// modify by liuhy for gm tls
 func TLSConfig(cert *x509.Certificate, serverName string, config fab.EndpointConfig, isGMTLS bool) (*tls.Config, error) {
 
 	if cert != nil {
@@ -38,23 +39,29 @@ func TLSConfig(cert *x509.Certificate, serverName string, config fab.EndpointCon
 }
 
 // TLSCertHash is a utility method to calculate the SHA256 hash of the configured certificate (for usage in channel headers)
-func TLSCertHash(config fab.EndpointConfig) ([]byte, error) {
+func TLSCertHash(config fab.EndpointConfig, isSM3 bool) ([]byte, error) {
 	certs := config.TLSClientCerts()
 	if len(certs) == 0 {
-		return computeHash([]byte(""))
+		return computeHash([]byte(""), isSM3)
 	}
 
 	cert := certs[0]
 	if len(cert.Certificate) == 0 {
-		return computeHash([]byte(""))
+		return computeHash([]byte(""), isSM3)
 	}
 
-	return computeHash(cert.Certificate[0])
+	return computeHash(cert.Certificate[0], isSM3)
 }
 
-//computeHash computes hash for given bytes using underlying cryptosuite default
-func computeHash(msg []byte) ([]byte, error) {
-	h, err := cryptosuite.GetDefault().Hash(msg, cryptosuite.GetSHA256Opts())
+// computeHash computes hash for given bytes using underlying cryptosuite default
+func computeHash(msg []byte, isSM3 bool) ([]byte, error) {
+	var opts core.HashOpts
+	if isSM3 {
+		opts = cryptosuite.GetSM3Opts()
+	} else {
+		opts = cryptosuite.GetSHA256Opts()
+	}
+	h, err := cryptosuite.GetDefault().Hash(msg, opts)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to compute tls cert hash")
 	}

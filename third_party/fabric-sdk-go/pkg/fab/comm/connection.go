@@ -10,7 +10,7 @@ import (
 	// "crypto/x509"
 	"sync/atomic"
 
-	fmtctx "context"    // jzk
+	fmtctx "context" // jzk
 
 	"gitee.com/china_uni/tjfoc-gm/x509"
 	"github.com/pkg/errors"
@@ -78,7 +78,7 @@ func NewConnection(ctx fabcontext.Client, url string, opts ...options.Opt) (*GRP
 		return nil, errors.Wrapf(err, "could not connect to %s", url)
 	}
 
-	hash, err := comm.TLSCertHash(ctx.EndpointConfig())
+	hash, err := comm.TLSCertHash(ctx.EndpointConfig(), ctx.InfraProvider().IsSm3())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get tls cert hash")
 	}

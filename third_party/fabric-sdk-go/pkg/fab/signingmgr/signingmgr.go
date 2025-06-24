@@ -24,8 +24,13 @@ type SigningManager struct {
 // @param {BCCSP} cryptoProvider - crypto provider
 // @param {Config} config - configuration provider
 // @returns {SigningManager} new signing manager
-func New(cryptoProvider core.CryptoSuite) (*SigningManager, error) {
-	return &SigningManager{cryptoProvider: cryptoProvider, hashOpts: cryptosuite.GetSHAOpts()}, nil
+func New(cryptoProvider core.CryptoSuite, isSM3 bool) (*SigningManager, error) {
+	if isSM3 {
+		return &SigningManager{cryptoProvider: cryptoProvider, hashOpts: cryptosuite.GetSM3Opts()}, nil
+	} else {
+		return &SigningManager{cryptoProvider: cryptoProvider, hashOpts: cryptosuite.GetSHAOpts()}, nil
+	}
+
 }
 
 // Sign will sign the given object using provided key

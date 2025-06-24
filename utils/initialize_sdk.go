@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-func InitializeSDKBySdkId(sdkConfig string) (error, *service.Fabric2Service) {
+func InitializeSDKBySdkId(sdkConfig string, gm, sm3 bool) (error, *service.Fabric2Service) {
 	// 获取全局配置中的 Fabric 网络信息
 	//计算sdkConfig的md5
 	sdkId := fmt.Sprintf("%x", MD5Hash(sdkConfig))
@@ -17,7 +17,7 @@ func InitializeSDKBySdkId(sdkConfig string) (error, *service.Fabric2Service) {
 		log.Printf("SDK already initialized  wait: %s", sdkId)
 		return nil, sdk
 	}
-	err := service.InitFabric2Service(sdkConfig, sdkId)
+	err := service.InitFabric2Service(sdkConfig, sdkId, gm, sm3)
 	if err != nil {
 		return err, nil
 	}

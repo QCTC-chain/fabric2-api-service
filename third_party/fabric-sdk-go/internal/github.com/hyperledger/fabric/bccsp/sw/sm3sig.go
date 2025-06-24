@@ -15,7 +15,9 @@ limitations under the License.
 */
 package sw
 
-import "hash"
+import (
+	"hash"
+)
 
 type sm3sig struct {
 	msg []byte

@@ -25,11 +25,12 @@ type Fabric2Service struct {
 var fabric2ServiceInstance *Fabric2Service
 var Fabric2ServicePool map[string]*Fabric2Service
 
-func InitFabric2Service(configString string, sdkId string) error {
+func InitFabric2Service(configString string, sdkId string, gmTls, SM3 bool) error {
 	sdk, err := fabsdk.New(
 		//config.FromFile(configPath),
 		config.FromRaw([]byte(configString), "yaml"),
-		fabsdk.WithGMTLS(false),
+		fabsdk.WithGMTLS(gmTls),
+		fabsdk.WithSM3(SM3),
 		fabsdk.WithTxTimeStamp(false))
 	if err != nil {
 		return err

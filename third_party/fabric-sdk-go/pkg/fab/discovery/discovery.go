@@ -28,9 +28,9 @@ const (
 	signerCacheSize = 10 // TODO: set an appropriate value (and perhaps make configurable)
 )
 
-//Client gives ability to send discovery request to multiple targets.
-//There are cases when multiple targets requested and some of them are hanging, recommended to cancel ctx after first successful response.
-//Note: "access denied" is a success response, so check for it after response evaluation.
+// Client gives ability to send discovery request to multiple targets.
+// There are cases when multiple targets requested and some of them are hanging, recommended to cancel ctx after first successful response.
+// Note: "access denied" is a success response, so check for it after response evaluation.
 type Client interface {
 	//modify by liuhy for gm tls
 	Send(isGMTLS bool, ctx context.Context, req *Request, targets ...fab.PeerConfig) (<-chan Response, error)
@@ -66,7 +66,7 @@ type Response interface {
 // Send retrieves information about channel peers, endorsers, and MSP config from the
 // given set of peers. A channel of successful responses is returned and an error if there is not targets.
 // Each Response contains Error method to check if there is an error.
-//modify by liuhy gm tls
+// modify by liuhy gm tls
 func (c *client) Send(isGMTLS bool, ctx context.Context, req *Request, targets ...fab.PeerConfig) (<-chan Response, error) {
 	if len(targets) == 0 {
 		return nil, errors.New("no targets specified")
@@ -159,7 +159,7 @@ func newAuthInfo(ctx fabcontext.Client) (*discovery.AuthInfo, error) {
 		return nil, err
 	}
 
-	hash, err := corecomm.TLSCertHash(ctx.EndpointConfig())
+	hash, err := corecomm.TLSCertHash(ctx.EndpointConfig(), ctx.InfraProvider().IsSm3())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get tls cert hash")
 	}

@@ -35,11 +35,15 @@ type Config struct {
 
 type SdkConfigRequest struct {
 	SdkConfig string `json:"sdkConfig"`
+	IsGm      bool   `yaml:"isGM"`
+	IsSM3     bool   `yaml:"isSM3"`
 }
 
 // ContractInvokeRequest 合约调用请求参数
 type ContractInvokeRequest struct {
 	SdkConfig     string   `json:"sdkConfig"`
+	IsGm          bool     `yaml:"isGM"`
+	IsSM3         bool     `yaml:"isSM3"`
 	ChaincodeName string   `json:"chaincodeName"`
 	Method        string   `json:"method"`
 	Args          []string `json:"args"`
@@ -48,6 +52,8 @@ type ContractInvokeRequest struct {
 // ContractQueryRequest 合约查询请求参数
 type ContractQueryRequest struct {
 	SdkConfig     string   `json:"sdkConfig"`
+	IsGm          bool     `yaml:"isGM"`
+	IsSM3         bool     `yaml:"isSM3"`
 	ChaincodeName string   `json:"ChaincodeName"`
 	Method        string   `json:"method"`
 	Args          []string `json:"args"` // 假设是字符串数组，后续可转为字节
@@ -56,29 +62,39 @@ type ContractQueryRequest struct {
 // ContractEventSubscribeRequest 合约事件订阅请求参数
 type ContractEventSubscribeRequest struct {
 	SdkConfig     string `json:"sdkConfig"`
+	IsGm          bool   `yaml:"isGM"`
+	IsSM3         bool   `yaml:"isSM3"`
 	ChaincodeName string `json:"chaincodeName"`
 	EventName     string `json:"eventName"`
 }
 
 type ContractEventUnSubscribeRequest struct {
 	SdkConfig     string `json:"sdkConfig"`
+	IsGm          bool   `yaml:"isGM"`
+	IsSM3         bool   `yaml:"isSM3"`
 	ChaincodeName string `json:"chaincodeName"`
 	EventName     string `json:"eventName"`
 }
 
 type ContractListRequest struct {
 	SdkConfig     string `json:"sdkConfig"`
+	IsGm          bool   `yaml:"isGM"`
+	IsSM3         bool   `yaml:"isSM3"`
 	ChaincodeName string `json:"chaincodeName"`
 }
 
 type GetBlockRequest struct {
 	SdkConfig   string `json:"sdkConfig"`
+	IsGm        bool   `yaml:"isGM"`
+	IsSM3       bool   `yaml:"isSM3"`
 	BlockNumber string `json:"blockNumber"`
 	OnlyHeader  bool   `json:"onlyHeader"`
 }
 
 type GetTxRequest struct {
 	SdkConfig   string `json:"sdkConfig"`
+	IsGm        bool   `yaml:"isGM"`
+	IsSM3       bool   `yaml:"isSM3"`
 	TxId        string `json:"txId"`
 	BlockNumber uint64 `json:"blockNumber"`
 	IsVerified  bool   `json:"isVerified"`

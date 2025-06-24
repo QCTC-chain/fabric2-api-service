@@ -17,7 +17,7 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -38,7 +38,7 @@ func GetContractInfo(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -59,7 +59,7 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -86,7 +86,7 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -115,7 +115,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -165,7 +165,7 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -207,7 +207,7 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
@@ -234,7 +234,7 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return

@@ -36,7 +36,7 @@ func initSuite(defaultSuite core.CryptoSuite) error {
 	return nil
 }
 
-//GetDefault returns default core
+// GetDefault returns default core
 func GetDefault() core.CryptoSuite {
 	if atomic.LoadInt32(&initialized) > 0 {
 		return defaultCryptoSuite
@@ -57,9 +57,9 @@ func GetDefault() core.CryptoSuite {
 	return defaultCryptoSuite
 }
 
-//SetDefault sets default suite if one is not already set or created
-//Make sure you set default suite before very first call to GetDefault(),
-//otherwise this function will return an error
+// SetDefault sets default suite if one is not already set or created
+// Make sure you set default suite before very first call to GetDefault(),
+// otherwise this function will return an error
 func SetDefault(newDefaultSuite core.CryptoSuite) error {
 	if atomic.LoadInt32(&initialized) > 0 {
 		return errors.New("default crypto suite is already set")
@@ -73,17 +73,22 @@ func DefaultInitialized() bool {
 	return atomic.LoadInt32(&initialized) > 0
 }
 
-//GetSHA256Opts returns options relating to SHA-256.
+// GetSHA256Opts returns options relating to SHA-256.
 func GetSHA256Opts() core.HashOpts {
 	return &bccsp.SHA256Opts{}
 }
 
-//GetSHAOpts returns options for computing SHA.
+// GetSHAOpts returns options for computing SHA.
 func GetSHAOpts() core.HashOpts {
 	return &bccsp.SHAOpts{}
 }
 
-//GetECDSAP256KeyGenOpts returns options for ECDSA key generation with curve P-256.
+// GetSM3Opts returns options for computing SM3.
+func GetSM3Opts() core.HashOpts {
+	return &bccsp.SM3Opts{}
+}
+
+// GetECDSAP256KeyGenOpts returns options for ECDSA key generation with curve P-256.
 func GetECDSAP256KeyGenOpts(ephemeral bool) core.KeyGenOpts {
 	return &bccsp.ECDSAP256KeyGenOpts{Temporary: ephemeral}
 }

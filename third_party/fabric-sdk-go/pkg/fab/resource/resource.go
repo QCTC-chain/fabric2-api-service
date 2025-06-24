@@ -36,7 +36,7 @@ type fabCtx struct {
 }
 
 type options struct {
-	retry retry.Opts
+	retry             retry.Opts
 	enableTxTimeStamp bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 }
 
@@ -256,7 +256,7 @@ func createOrUpdateChannel(reqCtx reqContext.Context, txh *txn.TransactionHeader
 		return errors.New("failed get client context from reqContext for Creating ChannelHeader")
 	}
 
-	hash, err := ccomm.TLSCertHash(ctx.EndpointConfig())
+	hash, err := ccomm.TLSCertHash(ctx.EndpointConfig(), ctx.InfraProvider().IsSm3())
 	if err != nil {
 		return errors.WithMessage(err, "failed to get tls cert hash")
 	}

@@ -36,7 +36,7 @@ func retrieveBlock(reqCtx reqContext.Context, orderers []fab.Orderer, channel st
 		return nil, errors.Wrap(err, "generating TX ID failed")
 	}
 
-	hash, err := ccomm.TLSCertHash(ctx.EndpointConfig())
+	hash, err := ccomm.TLSCertHash(ctx.EndpointConfig(), ctx.InfraProvider().IsSm3())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get tls cert hash")
 	}

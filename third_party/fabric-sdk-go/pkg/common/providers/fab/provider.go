@@ -35,8 +35,9 @@ type InfraProvider interface {
 	CreateOrdererFromConfig(isGMTLS bool, cfg *OrdererConfig) (Orderer, error)
 	CommManager() CommManager
 	Close()
-	IsGMTLS() bool //add by liuhy for gm tls
-	EnableTxTimeStamp () bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	IsGMTLS() bool           //add by liuhy for gm tls
+	EnableTxTimeStamp() bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	IsSm3() bool
 }
 
 // ChaincodeCall contains the ID of the chaincode as well
@@ -93,7 +94,7 @@ type CommManager interface {
 	ReleaseConn(conn *grpc.ClientConn)
 }
 
-//EndpointConfig contains endpoint network configurations
+// EndpointConfig contains endpoint network configurations
 type EndpointConfig interface {
 	Timeout(TimeoutType) time.Duration
 	OrderersConfig() []OrdererConfig

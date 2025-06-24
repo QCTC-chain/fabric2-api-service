@@ -9,9 +9,8 @@ package txn
 import (
 	"encoding/hex"
 	"fmt"
-	"gitee.com/china_uni/tjfoc-gm/sm3"
+	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
-	"github.com/qctc/fabric2-api-server/define"
 	"hash"
 	"os"
 	"strings"
@@ -83,15 +82,16 @@ func NewHeader(ctx contextApi.Client, channelID string, opts ...fab.TxnHeaderOpt
 		}
 	}
 	var h hash.Hash
+	var ho core.HashOpts
 	var err error
-	if define.GlobalConfig.ChainType == "qbaas" {
-		h = sm3.New()
+	if ctx.InfraProvider().IsSm3() {
+		ho = cryptosuite.GetSM3Opts()
 	} else {
-		ho := cryptosuite.GetSHA256Opts() // TODO: make configurable
-		h, err = ctx.CryptoSuite().GetHash(ho)
-		if err != nil {
-			return nil, errors.WithMessage(err, "hash function creation failed")
-		}
+		ho = cryptosuite.GetSHA256Opts()
+	}
+	h, err = ctx.CryptoSuite().GetHash(ho)
+	if err != nil {
+		return nil, errors.WithMessage(err, "hash function creation failed")
 	}
 
 	id, err := computeTxnID(nonce, creator, h)

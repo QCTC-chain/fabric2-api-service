@@ -20,10 +20,15 @@ var logger = logging.NewLogger("fabsdk")
 
 // InfraProvider represents the default implementation of Fabric objects.
 type InfraProvider struct {
-	providerContext context.Providers
-	commManager     *comm.CachingConnector
-	isGMTLS         bool //add by liuhy for gm tls
+	providerContext   context.Providers
+	commManager       *comm.CachingConnector
+	isGMTLS           bool //add by liuhy for gm tls
 	enableTxTimeStamp bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+	isSm3             bool
+}
+
+func (f *InfraProvider) IsSm3() bool {
+	return f.isSm3
 }
 
 // New creates a InfraProvider enabling access to core Fabric objects and functionality.
@@ -37,10 +42,11 @@ func New(config fab.EndpointConfig) *InfraProvider {
 }
 
 // Initialize sets the provider context
-func (f *InfraProvider) Initialize(isGMTLS bool, enableTxTimeStamp bool, providers context.Providers) error {  // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+func (f *InfraProvider) Initialize(isGMTLS bool, enableTxTimeStamp, isSM3 bool, providers context.Providers) error { // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 	f.providerContext = providers
 	f.isGMTLS = isGMTLS
 	f.enableTxTimeStamp = enableTxTimeStamp
+	f.isSm3 = isSM3
 	return nil
 }
 

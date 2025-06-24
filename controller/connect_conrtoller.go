@@ -15,7 +15,7 @@ func TestConnection(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
-	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig)
+	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		fmt.Printf("sdk Initialize error --------%s", err)
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
