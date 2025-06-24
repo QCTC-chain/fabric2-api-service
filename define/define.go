@@ -74,9 +74,12 @@ type ContractListRequest struct {
 type GetBlockRequest struct {
 	SdkConfig   string `json:"sdkConfig"`
 	BlockNumber uint64 `json:"blockNumber"`
+	OnlyHeader  bool   `json:"onlyHeader"`
 }
 
 type GetTxRequest struct {
-	SdkConfig string `json:"sdkConfig"`
-	TxId      string `json:"txId"`
+	SdkConfig   string `json:"sdkConfig"`
+	TxId        string `json:"txId"`
+	BlockNumber uint64 `json:"blockNumber"`
+	IsVerified  bool   `json:"isVerified"`
 }
