@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -343,7 +344,7 @@ func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]
 }
 
 // GetBlockInfo 获取区块信息
-func (s *Fabric2Service) GetBlockInfo(blockNumber uint64) (*common.Block, error) {
+func (s *Fabric2Service) GetBlockInfo(blockNumber string) (*common.Block, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, err
@@ -370,8 +371,23 @@ func (s *Fabric2Service) GetBlockInfo(blockNumber uint64) (*common.Block, error)
 		return nil, err
 	}
 
+	var queryBlockNumber uint64
+	if blockNumber == "latest" {
+		info, err := ledgerClient.QueryInfo()
+		if err != nil {
+			return nil, err
+		}
+
+		queryBlockNumber = info.BCI.Height - 1
+	} else {
+		queryBlockNumber, err = strconv.ParseUint(blockNumber, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// 查询指定区块信息
-	block, err := ledgerClient.QueryBlock(blockNumber)
+	block, err := ledgerClient.QueryBlock(queryBlockNumber)
 	if err != nil {
 		return nil, err
 	}

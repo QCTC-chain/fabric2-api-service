@@ -73,7 +73,7 @@ type ContractListRequest struct {
 
 type GetBlockRequest struct {
 	SdkConfig   string `json:"sdkConfig"`
-	BlockNumber uint64 `json:"blockNumber"`
+	BlockNumber string `json:"blockNumber"`
 	OnlyHeader  bool   `json:"onlyHeader"`
 }
 

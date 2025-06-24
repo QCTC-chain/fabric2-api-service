@@ -212,13 +212,20 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
+
 	block, err := sdk.GetBlockInfo(req.BlockNumber)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
 
-	utils.Success(w, block)
+	blockInfo := map[string]interface{}{
+		"blockNumber":  block.Header.Number,
+		"previousHash": block.Header.PreviousHash,
+		"dataHash":     block.Header.DataHash,
+	}
+
+	utils.Success(w, blockInfo)
 }
 
 func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
