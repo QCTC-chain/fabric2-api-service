@@ -109,14 +109,23 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 		args[i] = []byte(arg)
 	}
 
-	resp, err := sdk.QueryContract(req.ChaincodeName, req.Method, args)
+	resp, txId, err := sdk.QueryContract(req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
 
+	block, err := sdk.GetBlockInfo("latest")
+	if err != nil {
+		utils.InternalServerError(w, err)
+		return
+	}
+	// 解析 TransactionEnvelope.Payload（是一个 []byte）
+
 	utils.Success(w, map[string]interface{}{
 		"payload": string(resp),
+		"txHash":  string(txId),
+		"height":  block.GetHeader().GetNumber(),
 	})
 }
 

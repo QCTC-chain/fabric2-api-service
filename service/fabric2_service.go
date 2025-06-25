@@ -304,20 +304,20 @@ func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][
 }
 
 // QueryContract 查询合约调用
-func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]byte) ([]byte, error) {
+func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]byte) ([]byte, fab.TransactionID, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	channelID, err := s.getChannelID()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	channelContext := s.sdk.ChannelContext(
@@ -327,7 +327,7 @@ func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]
 	)
 	channelClient, err := channel.New(channelContext)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// 执行链码调用
 	response, err := channelClient.Query(channel.Request{
@@ -337,10 +337,10 @@ func (s *Fabric2Service) QueryContract(chaincodeName, function string, args [][]
 	})
 	if err != nil {
 		log.Printf("execute is error %s", err)
-		return nil, err
+		return nil, "", err
 	}
 
-	return response.Payload, nil
+	return response.Payload, response.TransactionID, nil
 }
 
 // GetBlockInfo 获取区块信息
