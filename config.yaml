@@ -8,6 +8,3 @@ mq:
   password: ''
   topic: 'wecross'
   group: ''
-
-#链类型配置，如果要连qbaas的gm链配置‘qbaas', 连其他链配置'other'
-chainType: 'other'

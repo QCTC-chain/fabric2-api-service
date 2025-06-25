@@ -162,7 +162,7 @@ func (s *Fabric2Service) GetContractList() ([]vo.ContractVO, error) {
 		return nil, err
 	}
 	// 获取某个通道上已部署的 chaincode 列表
-	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{}, resmgmt.WithTargetEndpoints(peers...))
+	installedCC, err := resMgmtClient.LifecycleQueryCommittedCC(channelID, resmgmt.LifecycleQueryCommittedCCRequest{}, resmgmt.WithTargetEndpoints(peers[0]))
 	if err != nil {
 		log.Printf("Failed to query committed chaincodes: %v", err)
 		return nil, err
@@ -265,20 +265,20 @@ func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) 
 }
 
 // InvokeContract 执行合约调用
-func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][]byte) ([]byte, error) {
+func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][]byte) ([]byte, fab.TransactionID, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	channelID, err := s.getChannelID()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	channelContext := s.sdk.ChannelContext(
@@ -288,7 +288,7 @@ func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][
 	)
 	channelClient, err := channel.New(channelContext)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// 执行链码调用
 	response, err := channelClient.Execute(channel.Request{
@@ -298,10 +298,9 @@ func (s *Fabric2Service) InvokeContract(chaincodeName, function string, args [][
 	})
 	if err != nil {
 		log.Printf("execute is error %s", err)
-		return nil, err
+		return nil, "", err
 	}
-
-	return response.Payload, nil
+	return response.Payload, response.TransactionID, nil
 }
 
 // QueryContract 查询合约调用
@@ -497,4 +496,40 @@ func (s *Fabric2Service) GetTransactionInfo(txID string) (*pb.ProcessedTransacti
 	}
 
 	return tx, nil
+}
+
+// GetBlockByTxID 获取区块高度
+func (s *Fabric2Service) GetBlockByTxID(txID string) (uint64, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return 0, err
+	}
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return 0, err
+	}
+
+	channelID, err := s.getChannelID()
+	if err != nil {
+		return 0, err
+	}
+
+	ledgerContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName),
+	)
+
+	ledgerClient, err := ledger.New(ledgerContext)
+	if err != nil {
+		return 0, err
+	}
+
+	// 查询交易详情
+	blockInfo, err := ledgerClient.QueryBlockByTxID(fab.TransactionID(txID))
+	if err != nil {
+		return 0, err
+	}
+
+	return blockInfo.GetHeader().GetNumber(), nil
 }

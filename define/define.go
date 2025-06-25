@@ -1,14 +1,14 @@
 package define
 
 import (
-	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-clients/golang/v5"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
 	"sync"
 )
 
 var (
 	GlobalConfig   *Config
-	GlobalProducer rocketmq.Producer
+	GlobalProducer golang.Producer
 
 	EventSubscriptions = make(map[string]fab.Registration) // key: uuid
 	SubscriptionMutex  = &sync.RWMutex{}

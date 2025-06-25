@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/apache/rocketmq-client-go/v2"
-	"github.com/apache/rocketmq-client-go/v2/producer"
+	"github.com/apache/rocketmq-clients/golang/v5"
+	"github.com/apache/rocketmq-clients/golang/v5/credentials"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/router"
 	"github.com/qctc/fabric2-api-server/service"
@@ -38,9 +38,15 @@ func init() {
 	define.GlobalConfig = config
 	mqConfig := define.GlobalConfig.MQ
 	//配置mq
-	define.GlobalProducer, err = rocketmq.NewProducer(
-		producer.WithGroupName(mqConfig.Group),
-		producer.WithNameServer([]string{fmt.Sprintf("%s:%d", mqConfig.Host, mqConfig.Port)}),
+	golang.ResetLogger()
+	define.GlobalProducer, err = golang.NewProducer(&golang.Config{
+		Endpoint: fmt.Sprintf("%s:%d", mqConfig.Host, mqConfig.Port),
+		Credentials: &credentials.SessionCredentials{
+			AccessKey:    "",
+			AccessSecret: "",
+		},
+	},
+		golang.WithTopics(mqConfig.Topic),
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize RocketMQ producer: %v", err)
@@ -59,7 +65,7 @@ func main() {
 
 		// 关闭 RocketMQ Producer
 		if define.GlobalProducer != nil {
-			if err := define.GlobalProducer.Shutdown(); err != nil {
+			if err := define.GlobalProducer.GracefulStop(); err != nil {
 				log.Printf("RocketMQ Producer 关闭失败: %v", err)
 			} else {
 				log.Println("RocketMQ Producer 已关闭")

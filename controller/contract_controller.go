@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/apache/rocketmq-clients/golang/v5"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/utils"
 	"log"
@@ -69,14 +69,25 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 	for i, arg := range req.Args {
 		args[i] = []byte(arg)
 	}
-	resp, err := sdk.InvokeContract(req.ChaincodeName, req.Method, args)
+	//var args [][]byte
+	//arg, _ := json.Marshal(req.Args)
+	//args = append(args, arg)
+	resp, txId, err := sdk.InvokeContract(req.ChaincodeName, req.Method, args)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
+	height, err := sdk.GetBlockByTxID(string(txId))
+	if err != nil {
+		utils.InternalServerError(w, err)
+		return
+	}
+	// 解析 TransactionEnvelope.Payload（是一个 []byte）
 
 	utils.Success(w, map[string]interface{}{
 		"payload": string(resp),
+		"txHash":  string(txId),
+		"height":  height,
 	})
 }
 
@@ -143,11 +154,12 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		for {
 			select {
 			case event := <-eventCh:
-				message := &primitive.Message{
+				log.Printf("Sending message to topic----------------:%s", define.GlobalConfig.MQ.Topic)
+				message := &golang.Message{
 					Topic: define.GlobalConfig.MQ.Topic,
 					Body:  []byte(fmt.Sprintf("%v", event)), // 可以根据实际格式序列化 event
 				}
-				_, err := define.GlobalProducer.SendSync(context.Background(), message)
+				_, err := define.GlobalProducer.Send(context.TODO(), message)
 				if err != nil {
 					log.Printf("Failed to send message to RocketMQ: %v", err)
 				} else {
@@ -198,7 +210,7 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		"message": "unsubscribed successfully",
 	})
 
-	define.GlobalProducer.Shutdown()
+	define.GlobalProducer.GracefulStop()
 }
 
 func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
