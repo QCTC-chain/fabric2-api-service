@@ -38,7 +38,6 @@ func init() {
 	define.GlobalConfig = config
 	mqConfig := define.GlobalConfig.MQ
 	//配置mq
-	golang.ResetLogger()
 	define.GlobalProducer, err = golang.NewProducer(&golang.Config{
 		Endpoint: fmt.Sprintf("%s:%d", mqConfig.Host, mqConfig.Port),
 		Credentials: &credentials.SessionCredentials{
