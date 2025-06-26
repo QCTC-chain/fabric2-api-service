@@ -141,7 +141,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	regID, eventCh, err := sdk.SubscribeEvent(req.ChaincodeName, req.EventName)
+	regID, eventCh, chainId, err := sdk.SubscribeEvent(req.ChaincodeName, req.EventName)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
@@ -158,22 +158,35 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	utils.Success(w, map[string]interface{}{
 		"subscribeId": key,
 	})
+	var eventRes define.EventRes
 	// 模拟简单事件监听逻辑
 	go func() {
 		for {
 			select {
 			case event := <-eventCh:
-				log.Printf("Sending message to topic----------------:%s", define.GlobalConfig.MQ.Topic)
-				message := &golang.Message{
-					Topic: define.GlobalConfig.MQ.Topic,
-					Body:  []byte(fmt.Sprintf("%v", event)), // 可以根据实际格式序列化 event
+				if event != nil {
+					eventRes.Path = "cross." + req.ChainName + "." + req.ChaincodeName
+					eventRes.EventData = event.Payload
+					eventRes.TxId = event.TxID
+					eventRes.ChaincodeName = event.ChaincodeID
+					eventRes.BlockHeight = event.BlockNumber
+					eventRes.ChainId = chainId
+
+					eventByte, _ := json.Marshal(eventRes)
+					log.Printf("event data is-------- %s", eventByte)
+					message := &golang.Message{
+						Topic: define.GlobalConfig.MQ.Topic,
+						Body:  eventByte, // 可以根据实际格式序列化 event
+					}
+					_, err := define.GlobalProducer.Send(context.TODO(), message)
+					if err != nil {
+						log.Printf("Failed to send message to RocketMQ: %v", err)
+					} else {
+						log.Printf("Event sent to RocketMQ: %v", event)
+					}
+
 				}
-				_, err := define.GlobalProducer.Send(context.TODO(), message)
-				if err != nil {
-					log.Printf("Failed to send message to RocketMQ: %v", err)
-				} else {
-					log.Printf("Event sent to RocketMQ: %v", event)
-				}
+
 			}
 		}
 	}()

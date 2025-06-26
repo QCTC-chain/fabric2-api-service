@@ -66,6 +66,7 @@ type ContractEventSubscribeRequest struct {
 	IsSM3         bool   `yaml:"isSM3"`
 	ChaincodeName string `json:"chaincodeName"`
 	EventName     string `json:"eventName"`
+	ChainName     string `json:"chainName"`
 }
 
 type ContractEventUnSubscribeRequest struct {
@@ -97,4 +98,13 @@ type GetTxRequest struct {
 	TxId        string `json:"txId"`
 	BlockNumber uint64 `json:"blockNumber"`
 	IsVerified  bool   `json:"isVerified"`
+}
+
+type EventRes struct {
+	BlockHeight   uint64 `json:"block_height"`
+	ChainId       string `json:"chain_id"`
+	TxId          string `json:"tx_id"`
+	Path          string `json:"path"`
+	EventData     []byte `json:"event_data"`
+	ChaincodeName string `json:"chaincode_name"`
 }

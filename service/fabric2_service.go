@@ -227,20 +227,20 @@ func (s *Fabric2Service) GetContractInfo(chaincodeName string) (map[string]inter
 }
 
 // SubscribeEvent 订阅合约事件
-func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) (fab.Registration, <-chan *fab.CCEvent, error) {
+func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) (fab.Registration, <-chan *fab.CCEvent, string, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	orgAdmin, err := s.getOrgAdmin(orgName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	channelID, err := s.getChannelID()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	eventContext := s.sdk.ChannelContext(
@@ -251,17 +251,17 @@ func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) 
 
 	eventClient, err := event.New(eventContext)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	// 注册事件监听
 	req, eventCh, err := eventClient.RegisterChaincodeEvent(chaincodeName, eventName)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	// 返回事件通道，调用方需要负责管理注册和清理
-	return req, eventCh, nil
+	return req, eventCh, channelID, nil
 }
 
 // InvokeContract 执行合约调用
