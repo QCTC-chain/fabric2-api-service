@@ -10,8 +10,9 @@ var (
 	GlobalConfig   *Config
 	GlobalProducer golang.Producer
 
-	EventSubscriptions = make(map[string]fab.Registration) // key: uuid
-	SubscriptionMutex  = &sync.RWMutex{}
+	EventSubscriptions  = make(map[string]fab.Registration) // key: uuid
+	SubscriptionMutex   = &sync.RWMutex{}
+	SubscriptionContext = sync.Map{}
 )
 
 type MQConfig struct {
@@ -67,6 +68,8 @@ type ContractEventSubscribeRequest struct {
 	ChaincodeName string `json:"chaincodeName"`
 	EventName     string `json:"eventName"`
 	ChainName     string `json:"chainName"`
+	FromBlock     string `json:"fromBlock"`
+	EndBlock      string `json:"endBlock"`
 }
 
 type ContractEventUnSubscribeRequest struct {
@@ -101,10 +104,16 @@ type GetTxRequest struct {
 }
 
 type EventRes struct {
-	BlockHeight   uint64 `json:"block_height"`
-	ChainId       string `json:"chain_id"`
-	TxId          string `json:"tx_id"`
-	Path          string `json:"path"`
-	EventData     []byte `json:"event_data"`
-	ChaincodeName string `json:"chaincode_name"`
+	BlockHeight   uint64   `json:"block_height"`
+	ChainId       string   `json:"chain_id"`
+	TxId          string   `json:"tx_id"`
+	Path          string   `json:"path"`
+	EventData     []string `json:"event_data"`
+	ChaincodeName string   `json:"chaincode_name"`
+}
+
+type Event struct {
+	Action        string `json:"action"`        // 事件动作，例如 "setEvidence"
+	Creator       string `json:"creator"`       // 创建者
+	EvidenceBytes string `json:"evidenceBytes"` // 证据字节数据
 }

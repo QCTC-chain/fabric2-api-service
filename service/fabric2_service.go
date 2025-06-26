@@ -227,7 +227,7 @@ func (s *Fabric2Service) GetContractInfo(chaincodeName string) (map[string]inter
 }
 
 // SubscribeEvent 订阅合约事件
-func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) (fab.Registration, <-chan *fab.CCEvent, string, error) {
+func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) (fab.Registration, <-chan *fab.BlockEvent, string, error) {
 	orgName, err := s.getOrgName()
 	if err != nil {
 		return nil, nil, "", err
@@ -248,14 +248,12 @@ func (s *Fabric2Service) SubscribeEvent(chaincodeName string, eventName string) 
 		fabsdk.WithUser(orgAdmin),
 		fabsdk.WithOrg(orgName),
 	)
-
-	eventClient, err := event.New(eventContext)
+	eventClient, err := event.New(eventContext, event.WithBlockEvents())
 	if err != nil {
 		return nil, nil, "", err
 	}
-
 	// 注册事件监听
-	req, eventCh, err := eventClient.RegisterChaincodeEvent(chaincodeName, eventName)
+	req, eventCh, err := eventClient.RegisterBlockEvent()
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -532,4 +530,56 @@ func (s *Fabric2Service) GetBlockByTxID(txID string) (uint64, error) {
 	}
 
 	return blockInfo.GetHeader().GetNumber(), nil
+}
+
+func (s *Fabric2Service) GetBlocks(startNumber string) ([]*common.Block, error) {
+	orgName, err := s.getOrgName()
+	if err != nil {
+		return nil, err
+	}
+
+	orgAdmin, err := s.getOrgAdmin(orgName)
+	if err != nil {
+		return nil, err
+	}
+
+	channelID, err := s.getChannelID()
+	if err != nil {
+		return nil, err
+	}
+
+	ledgerContext := s.sdk.ChannelContext(
+		channelID,
+		fabsdk.WithUser(orgAdmin),
+		fabsdk.WithOrg(orgName),
+	)
+
+	ledgerClient, err := ledger.New(ledgerContext)
+	if err != nil {
+		return nil, err
+	}
+
+	var queryBlockNumber uint64
+	info, err := ledgerClient.QueryInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	latestNumberUint := info.BCI.Height - 1
+	startNumberUint, err := strconv.ParseUint(startNumber, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询指定区块信息
+	var blocks []*common.Block
+	for queryBlockNumber = startNumberUint; queryBlockNumber <= latestNumberUint; queryBlockNumber++ {
+		block, err := ledgerClient.QueryBlock(queryBlockNumber)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
 }

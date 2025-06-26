@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/apache/rocketmq-clients/golang/v5"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/utils"
 	"log"
@@ -146,53 +147,50 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.InternalServerError(w, err)
 		return
 	}
-	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
-	// 构造唯一 key
-	key := fmt.Sprintf("%s:%s:%s", sdkId, req.ChaincodeName, req.EventName)
 
-	// 存储 regID
+	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
+	const subscriptionKeyFormat = "%s:%s:%s"
+	key := fmt.Sprintf(subscriptionKeyFormat, sdkId, req.ChaincodeName, req.EventName)
+
+	// 使用 sync.Map 替代 Mutex + map
 	define.SubscriptionMutex.Lock()
 	define.EventSubscriptions[key] = regID
 	define.SubscriptionMutex.Unlock()
 
+	log.Printf("Subscribed to event: %s on chaincode: %s with key: %s", req.EventName, req.ChaincodeName, key)
+
+	// 获取历史区块并发送事件
+	blocks, err := sdk.GetBlocks(req.FromBlock)
+	if err != nil {
+		log.Printf("Failed to fetch blocks starting from %d: %v", req.FromBlock, err)
+		utils.InternalServerError(w, err)
+		return
+	}
+	for _, block := range blocks {
+		sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, block, chainId, define.GlobalProducer)
+	}
 	utils.Success(w, map[string]interface{}{
 		"subscribeId": key,
 	})
-	var eventRes define.EventRes
-	// 模拟简单事件监听逻辑
-	go func() {
+	// 启动监听协程，并通过 context 管理生命周期
+	ctx, cancel := context.WithCancel(context.Background())
+	define.SubscriptionContext.Store(key, cancel) // 存储 cancel 用于后续取消
+
+	go func(ctx context.Context) {
+		defer log.Printf("Stopped listener for subscription: %s", key)
 		for {
 			select {
 			case event := <-eventCh:
-				if event != nil {
-					eventRes.Path = "cross." + req.ChainName + "." + req.ChaincodeName
-					eventRes.EventData = event.Payload
-					eventRes.TxId = event.TxID
-					eventRes.ChaincodeName = event.ChaincodeID
-					eventRes.BlockHeight = event.BlockNumber
-					eventRes.ChainId = chainId
-
-					eventByte, _ := json.Marshal(eventRes)
-					log.Printf("event data is-------- %s", eventByte)
-					message := &golang.Message{
-						Topic: define.GlobalConfig.MQ.Topic,
-						Body:  eventByte, // 可以根据实际格式序列化 event
-					}
-					_, err := define.GlobalProducer.Send(context.TODO(), message)
-					if err != nil {
-						log.Printf("Failed to send message to RocketMQ: %v", err)
-					} else {
-						log.Printf("Event sent to RocketMQ: %v", event)
-					}
-
+				if event == nil {
+					continue
 				}
-
+				sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, event.Block, chainId, define.GlobalProducer)
+			case <-ctx.Done():
+				return
 			}
 		}
-	}()
-
+	}(ctx)
 }
-
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	var req define.ContractEventUnSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -223,11 +221,20 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	delete(define.EventSubscriptions, req.SubscribeId)
 	define.SubscriptionMutex.RUnlock()
 
+	if cancel, ok := define.SubscriptionContext.Load(req.SubscribeId); ok {
+		cancel.(context.CancelFunc)()
+	}
+	define.SubscriptionContext.Delete(req.SubscribeId)
+
+	err = define.GlobalProducer.GracefulStop()
+	if err != nil {
+		utils.InternalServerError(w, err)
+		return
+	}
 	utils.Success(w, map[string]interface{}{
 		"subscribeId": req.SubscribeId,
 	})
 
-	define.GlobalProducer.GracefulStop()
 }
 
 func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
@@ -276,4 +283,25 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.Success(w, tx)
+}
+
+// 封装发送事件到 RocketMQ 的逻辑
+func sendEventToRocketMQ(eventName, chaincodeName, chainName string, block *common.Block, chainId string, producer golang.Producer) {
+	eventNameRes, chaincodeID, eventByte, err := utils.GetEventByte(block, chainName, chaincodeName, chainId)
+	if err != nil {
+		log.Printf("Failed to get event byte: %v", err)
+		return
+	}
+	if eventNameRes == eventName && chaincodeID == chaincodeName {
+		message := &golang.Message{
+			Topic: define.GlobalConfig.MQ.Topic,
+			Body:  eventByte,
+		}
+		_, err := producer.Send(context.TODO(), message)
+		if err != nil {
+			log.Printf("Failed to send message to RocketMQ: %v", err)
+		} else {
+			log.Printf("Event sent to RocketMQ")
+		}
+	}
 }
