@@ -69,11 +69,10 @@ type ContractEventSubscribeRequest struct {
 }
 
 type ContractEventUnSubscribeRequest struct {
-	SdkConfig     string `json:"sdkConfig"`
-	IsGm          bool   `yaml:"isGM"`
-	IsSM3         bool   `yaml:"isSM3"`
-	ChaincodeName string `json:"chaincodeName"`
-	EventName     string `json:"eventName"`
+	SdkConfig   string `json:"sdkConfig"`
+	IsGm        bool   `yaml:"isGM"`
+	IsSM3       bool   `yaml:"isSM3"`
+	SubscribeId string `json:"subscribeId"`
 }
 
 type ContractListRequest struct {

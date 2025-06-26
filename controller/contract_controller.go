@@ -156,7 +156,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	define.SubscriptionMutex.Unlock()
 
 	utils.Success(w, map[string]interface{}{
-		"payload": "subscribed successfully",
+		"subscribeId": key,
 	})
 	// 模拟简单事件监听逻辑
 	go func() {
@@ -181,7 +181,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
-	var req define.ContractEventSubscribeRequest
+	var req define.ContractEventUnSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
 		return
@@ -192,14 +192,9 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
-	// 构造唯一 key
-	key := fmt.Sprintf("%s:%s:%s", sdkId, req.ChaincodeName, req.EventName)
-	// 构造 key
-
 	// 获取 regID
-	define.SubscriptionMutex.Lock()
-	regID, exists := define.EventSubscriptions[key]
+	define.SubscriptionMutex.RLocker().Lock()
+	regID, exists := define.EventSubscriptions[req.SubscribeId]
 	define.SubscriptionMutex.RUnlock()
 	if !exists {
 		utils.BadRequest(w, "subscription not found")
@@ -211,12 +206,12 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// 删除缓存
-	define.SubscriptionMutex.Lock()
-	delete(define.EventSubscriptions, key)
+	define.SubscriptionMutex.RLocker().Lock()
+	delete(define.EventSubscriptions, req.SubscribeId)
 	define.SubscriptionMutex.RUnlock()
 
 	utils.Success(w, map[string]interface{}{
-		"message": "unsubscribed successfully",
+		"subscribeId": req.SubscribeId,
 	})
 
 	define.GlobalProducer.GracefulStop()
