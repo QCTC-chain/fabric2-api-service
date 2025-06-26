@@ -110,6 +110,7 @@ type EventRes struct {
 	Path          string   `json:"path"`
 	EventData     []string `json:"event_data"`
 	ChaincodeName string   `json:"chaincode_name"`
+	Topic         string   `json:"topic"`
 }
 
 type Event struct {

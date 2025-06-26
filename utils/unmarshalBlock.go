@@ -64,6 +64,7 @@ func GetEventByte(block *common.Block, chainName, chaincodeName, chainId string)
 	eventRes.ChaincodeName = chaincodeID
 	eventRes.BlockHeight = block.GetHeader().GetNumber()
 	eventRes.ChainId = chainId
+	eventRes.Topic = eventName
 
 	eventByte, _ := json.Marshal(eventRes)
 	return eventName, chaincodeID, eventByte, nil
