@@ -173,7 +173,10 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, block := range blocks {
-		sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, block, chainId, define.GlobalProducer)
+		err := sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, block, chainId, define.GlobalProducer)
+		if err != nil {
+			continue
+		}
 	}
 	utils.Success(w, map[string]interface{}{
 		"subscribeId": key,
@@ -190,7 +193,10 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 				if event == nil {
 					continue
 				}
-				sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, event.Block, chainId, define.GlobalProducer)
+				err = sendEventToRocketMQ(req.EventName, req.ChaincodeName, req.ChainName, event.Block, chainId, define.GlobalProducer)
+				if err != nil {
+					continue
+				}
 			case <-ctx.Done():
 				return
 			}
@@ -232,11 +238,11 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	define.SubscriptionContext.Delete(req.SubscribeId)
 
-	err = define.GlobalProducer.GracefulStop()
-	if err != nil {
-		utils.InternalServerError(w, err)
-		return
-	}
+	//err = define.GlobalProducer.GracefulStop()
+	//if err != nil {
+	//	utils.InternalServerError(w, err)
+	//	return
+	//}
 	utils.Success(w, map[string]interface{}{
 		"subscribeId": req.SubscribeId,
 	})
@@ -292,11 +298,11 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // 封装发送事件到 RocketMQ 的逻辑
-func sendEventToRocketMQ(eventName, chaincodeName, chainName string, block *common.Block, chainId string, producer golang.Producer) {
+func sendEventToRocketMQ(eventName, chaincodeName, chainName string, block *common.Block, chainId string, producer golang.Producer) error {
 	eventNameRes, chaincodeID, eventByte, err := utils.GetEventByte(block, chainName, chaincodeName, chainId)
 	if err != nil {
 		log.Printf("Failed to get event byte: %v", err)
-		return
+		return err
 	}
 	if eventNameRes == eventName && chaincodeID == chaincodeName {
 		message := &golang.Message{
@@ -306,8 +312,10 @@ func sendEventToRocketMQ(eventName, chaincodeName, chainName string, block *comm
 		_, err := producer.Send(context.TODO(), message)
 		if err != nil {
 			log.Printf("Failed to send message to RocketMQ: %v", err)
+			return err
 		} else {
 			log.Printf("Event sent to RocketMQ")
 		}
 	}
+	return nil
 }
