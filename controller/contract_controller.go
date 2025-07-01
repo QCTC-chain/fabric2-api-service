@@ -142,15 +142,21 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
+	const subscriptionKeyFormat = "%s:%s:%s"
+	key := fmt.Sprintf(subscriptionKeyFormat, sdkId, req.ChaincodeName, req.EventName)
+	if define.EventSubscriptions[key] != nil {
+		utils.Success(w, map[string]interface{}{
+			"subscribeId": key,
+		})
+		return
+	}
+
 	regID, eventCh, chainId, err := sdk.SubscribeEvent(req.ChaincodeName, req.EventName)
 	if err != nil {
 		utils.InternalServerError(w, err)
 		return
 	}
-
-	sdkId := fmt.Sprintf("%x", utils.MD5Hash(req.SdkConfig))
-	const subscriptionKeyFormat = "%s:%s:%s"
-	key := fmt.Sprintf(subscriptionKeyFormat, sdkId, req.ChaincodeName, req.EventName)
 
 	// 使用 sync.Map 替代 Mutex + map
 	define.SubscriptionMutex.Lock()
