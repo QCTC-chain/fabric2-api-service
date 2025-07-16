@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"github.com/qctc/fabric2-api-server/define"
 	"github.com/qctc/fabric2-api-server/utils"
+	"log"
 	"net/http"
 )
 
 func TestConnection(w http.ResponseWriter, r *http.Request) {
 	// 使用已有方法测试连接
+	log.Printf("test connection start --------")
 	var req define.SdkConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
 		return
 	}
+	log.Printf("test connection req ----------%+v\n", req)
 	err, sdk := utils.InitializeSDKBySdkId(req.SdkConfig, req.IsGm, req.IsSM3)
 	if err != nil {
 		fmt.Printf("sdk Initialize error --------%s", err)

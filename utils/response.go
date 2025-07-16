@@ -33,7 +33,7 @@ func BadRequest(w http.ResponseWriter, message string) {
 
 // InternalServerError 返回500错误
 func InternalServerError(w http.ResponseWriter, err error) {
-	ResponseJSON(w, http.StatusInternalServerError, "Internal Server Error", err.Error())
+	ResponseJSON(w, http.StatusInternalServerError, err.Error(), nil)
 }
 
 // ResponseJSON 返回JSON响应

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/qctc/fabric2-api-server/service"
 	"io"
-	"log"
 )
 
 func InitializeSDKBySdkId(sdkConfig string, gm, sm3 bool) (error, *service.Fabric2Service) {
@@ -14,7 +13,7 @@ func InitializeSDKBySdkId(sdkConfig string, gm, sm3 bool) (error, *service.Fabri
 	//计算sdkConfig的md5
 	sdkId := fmt.Sprintf("%x", MD5Hash(sdkConfig))
 	if sdk, ok := service.Fabric2ServicePool[sdkId]; ok {
-		log.Printf("SDK already initialized  wait: %s", sdkId)
+		//log.Printf("SDK already initialized  wait: %s", sdkId)
 		return nil, sdk
 	}
 	err := service.InitFabric2Service(sdkConfig, sdkId, gm, sm3)

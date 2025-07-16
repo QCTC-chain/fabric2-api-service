@@ -76,7 +76,7 @@ type ContractEventUnSubscribeRequest struct {
 	SdkConfig   string `json:"sdkConfig"`
 	IsGm        bool   `yaml:"isGM"`
 	IsSM3       bool   `yaml:"isSM3"`
-	SubscribeId string `json:"subscribeId"`
+	SubscribeId string `json:"subscribeEventId"`
 }
 
 type ContractListRequest struct {
@@ -117,4 +117,19 @@ type Event struct {
 	Action        string `json:"action"`        // 事件动作，例如 "setEvidence"
 	Creator       string `json:"creator"`       // 创建者
 	EvidenceBytes string `json:"evidenceBytes"` // 证据字节数据
+}
+
+//ccEvent.EventName, ccEvent.TxId, ccEvent.ChaincodeId, payload
+
+type EventData struct {
+	EventName   string   `json:"eventName"`
+	TxId        string   `json:"txId"`
+	ChaincodeId string   `json:"chaincodeId"`
+	Payload     []string `json:"payload"`
+}
+
+type EventByteData struct {
+	EventName   string
+	ChaincodeId string
+	EventByte   []byte
 }

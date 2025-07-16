@@ -560,15 +560,20 @@ func (s *Fabric2Service) GetBlocks(startNumber string) ([]*common.Block, error) 
 	}
 
 	var queryBlockNumber uint64
+	var startNumberUint uint64
 	info, err := ledgerClient.QueryInfo()
 	if err != nil {
 		return nil, err
 	}
 
 	latestNumberUint := info.BCI.Height - 1
-	startNumberUint, err := strconv.ParseUint(startNumber, 10, 64)
-	if err != nil {
-		return nil, err
+	if startNumber == "latest" {
+		return []*common.Block{}, nil
+	} else {
+		startNumberUint, err = strconv.ParseUint(startNumber, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// 查询指定区块信息

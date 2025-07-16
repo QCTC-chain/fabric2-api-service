@@ -13,6 +13,7 @@ import (
 )
 
 func GetContractList(w http.ResponseWriter, r *http.Request) {
+	log.Printf("get contract list start --------")
 	var req define.SdkConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -34,6 +35,7 @@ func GetContractList(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetContractInfo(w http.ResponseWriter, r *http.Request) {
+	log.Printf("get contract info start --------")
 	var req define.ContractListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -55,6 +57,7 @@ func GetContractInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func InvokeContract(w http.ResponseWriter, r *http.Request) {
+	log.Printf("invoke contract start --------")
 	var req define.ContractInvokeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -93,6 +96,7 @@ func InvokeContract(w http.ResponseWriter, r *http.Request) {
 }
 
 func QueryContract(w http.ResponseWriter, r *http.Request) {
+	log.Printf("query contract start --------")
 	var req define.ContractQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -131,6 +135,7 @@ func QueryContract(w http.ResponseWriter, r *http.Request) {
 }
 
 func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
+	log.Printf("subscribe contract event start --------")
 	var req define.ContractEventSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -204,6 +209,7 @@ func SubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 	}(ctx)
 }
 func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
+	log.Printf("unsubscribe contract event start --------")
 	var req define.ContractEventUnSubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -214,7 +220,6 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 		utils.BadRequest(w, fmt.Sprintf("sdk Initialize error %s", err))
 		return
 	}
-
 	// 获取 regID
 	define.SubscriptionMutex.RLocker().Lock()
 	regID, exists := define.EventSubscriptions[req.SubscribeId]
@@ -250,6 +255,7 @@ func UnsubscribeContractEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
+	log.Printf("get block info start --------")
 	var req define.GetBlockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -277,6 +283,7 @@ func GetBlockInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
+	log.Printf("get transaction info start --------")
 	var req define.GetTxRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.BadRequest(w, "Invalid request body")
@@ -299,23 +306,27 @@ func GetTransactionInfo(w http.ResponseWriter, r *http.Request) {
 
 // 封装发送事件到 RocketMQ 的逻辑
 func sendEventToRocketMQ(eventName, chaincodeName, chainName string, block *common.Block, chainId string, producer golang.Producer) error {
-	eventNameRes, chaincodeID, eventByte, err := utils.GetEventByte(block, chainName, chaincodeName, chainId)
+	eventBytes, err := utils.GetEventByte(block, chainName, chaincodeName, chainId)
 	if err != nil {
 		log.Printf("Failed to get event byte: %v", err)
 		return err
 	}
-	if eventNameRes == eventName && chaincodeID == chaincodeName {
-		message := &golang.Message{
-			Topic: define.GlobalConfig.MQ.Topic,
-			Body:  eventByte,
-		}
-		_, err := producer.Send(context.TODO(), message)
-		if err != nil {
-			log.Printf("Failed to send message to RocketMQ: %v", err)
-			return err
-		} else {
-			log.Printf("Event sent to RocketMQ")
+	for _, v := range eventBytes {
+		log.Printf("======== eventName is %s, byte is %s\n", v.EventName, v.EventByte)
+		if v.EventName == eventName && v.ChaincodeId == chaincodeName {
+			message := &golang.Message{
+				Topic: define.GlobalConfig.MQ.Topic,
+				Body:  v.EventByte,
+			}
+			_, err := producer.Send(context.TODO(), message)
+			if err != nil {
+				log.Printf("Failed to send message to RocketMQ: %v", err)
+				return err
+			} else {
+				log.Printf("Event sent to RocketMQ")
+			}
 		}
 	}
+
 	return nil
 }
