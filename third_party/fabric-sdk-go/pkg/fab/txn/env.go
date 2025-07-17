@@ -9,8 +9,6 @@ package txn
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
-	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
 	"hash"
 	"os"
 	"strings"
@@ -25,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/common/crypto"
 	contextApi "github.com/hyperledger/fabric-sdk-go/pkg/common/providers/context"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
+	"github.com/hyperledger/fabric-sdk-go/pkg/core/cryptosuite"
 )
 
 // TransactionHeader contains metadata for a transaction created by the SDK.
@@ -81,15 +80,14 @@ func NewHeader(ctx contextApi.Client, channelID string, opts ...fab.TxnHeaderOpt
 			return nil, errors.WithMessage(err, "identity from context failed")
 		}
 	}
-	var h hash.Hash
-	var ho core.HashOpts
-	var err error
+
+	ho := cryptosuite.GetSHA256Opts() // TODO: make configurable
 	if ctx.InfraProvider().IsSm3() {
 		ho = cryptosuite.GetSM3Opts()
 	} else {
 		ho = cryptosuite.GetSHA256Opts()
 	}
-	h, err = ctx.CryptoSuite().GetHash(ho)
+	h, err := ctx.CryptoSuite().GetHash(ho)
 	if err != nil {
 		return nil, errors.WithMessage(err, "hash function creation failed")
 	}
@@ -98,6 +96,7 @@ func NewHeader(ctx contextApi.Client, channelID string, opts ...fab.TxnHeaderOpt
 	if err != nil {
 		return nil, errors.WithMessage(err, "txn ID computation failed")
 	}
+
 	// jzk, tx with timestamp, for fabric 1.4.8-enhanced
 	// global configuration of environment variables or the individual configuration of sdk granularity
 	if options.EnableTxTimeStamp || strings.ToLower(os.Getenv("TXID_WITH_TIMESTAMP")) == "true" {

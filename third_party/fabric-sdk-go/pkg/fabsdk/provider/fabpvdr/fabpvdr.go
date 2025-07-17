@@ -27,10 +27,6 @@ type InfraProvider struct {
 	isSm3             bool
 }
 
-func (f *InfraProvider) IsSm3() bool {
-	return f.isSm3
-}
-
 // New creates a InfraProvider enabling access to core Fabric objects and functionality.
 func New(config fab.EndpointConfig) *InfraProvider {
 	idleTime := config.Timeout(fab.ConnectionIdle)
@@ -41,8 +37,12 @@ func New(config fab.EndpointConfig) *InfraProvider {
 	}
 }
 
+func (f *InfraProvider) IsSm3() bool {
+	return f.isSm3
+}
+
 // Initialize sets the provider context
-func (f *InfraProvider) Initialize(isGMTLS bool, enableTxTimeStamp, isSM3 bool, providers context.Providers) error { // jzk, tx with timestamp, for fabric 1.4.8-enhanced
+func (f *InfraProvider) Initialize(isGMTLS bool, enableTxTimeStamp bool, isSM3 bool, providers context.Providers) error { // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 	f.providerContext = providers
 	f.isGMTLS = isGMTLS
 	f.enableTxTimeStamp = enableTxTimeStamp

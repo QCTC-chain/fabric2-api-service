@@ -77,15 +77,13 @@ func DefaultInitialized() bool {
 func GetSHA256Opts() core.HashOpts {
 	return &bccsp.SHA256Opts{}
 }
+func GetSM3Opts() core.HashOpts {
+	return &bccsp.SM3Opts{}
+}
 
 // GetSHAOpts returns options for computing SHA.
 func GetSHAOpts() core.HashOpts {
 	return &bccsp.SHAOpts{}
-}
-
-// GetSM3Opts returns options for computing SM3.
-func GetSM3Opts() core.HashOpts {
-	return &bccsp.SM3Opts{}
 }
 
 // GetECDSAP256KeyGenOpts returns options for ECDSA key generation with curve P-256.

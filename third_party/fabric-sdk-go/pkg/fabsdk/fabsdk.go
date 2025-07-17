@@ -256,7 +256,7 @@ func WithErrorHandler(value fab.ErrorHandler) Option {
 // providerInit interface allows for initializing providers
 // TODO: minimize interface
 type providerInit interface {
-	Initialize(isGMTLS, enableTxTimeStamp, isSM3 bool, providers contextApi.Providers) error
+	Initialize(isGMTLS, enableTxTimeStamp bool, isSM3 bool, providers contextApi.Providers) error
 }
 
 func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) error { //nolint
@@ -297,7 +297,7 @@ func initSDK(sdk *FabricSDK, configProvider core.ConfigProvider, opts []Option) 
 	}
 
 	// Initialize Signing Manager
-	signingManager, err := sdk.opts.Core.CreateSigningManager(sdk.cryptoSuite, sdk.opts.withGMTLS)
+	signingManager, err := sdk.opts.Core.CreateSigningManager(sdk.cryptoSuite)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create signing manager")
 	}

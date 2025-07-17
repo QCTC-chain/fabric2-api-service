@@ -22,6 +22,7 @@ import (
 	"regexp"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	flogging "github.com/hyperledger/fabric-sdk-go/internal/github.com/hyperledger/fabric/sdkpatch/logbridge"
 )
@@ -150,7 +151,7 @@ func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
 
 	logger.Debugf("Packaging node.js project from path %s", folder)
 
-	if err = util.WriteFolderToTarPackage(tw, folder, []string{"node_modules"}, nil, nil); err != nil {
+	if err = util.WriteFolderToTarPackage(tw, folder, nil, nil, nil); err != nil {
 		logger.Errorf("Error writing folder to tar package %s", err)
 		return nil, fmt.Errorf("Error writing Chaincode package contents: %s", err)
 	}

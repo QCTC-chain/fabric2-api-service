@@ -23,7 +23,7 @@ type Providers interface {
 // CoreProviderFactory allows overriding of primitives and the fabric core object provider
 type CoreProviderFactory interface {
 	CreateCryptoSuiteProvider(config core.CryptoSuiteConfig) (core.CryptoSuite, error)
-	CreateSigningManager(cryptoProvider core.CryptoSuite, isSM3 bool) (core.SigningManager, error)
+	CreateSigningManager(cryptoProvider core.CryptoSuite) (core.SigningManager, error)
 	CreateInfraProvider(config fab.EndpointConfig) (fab.InfraProvider, error)
 }
 

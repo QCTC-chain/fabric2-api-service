@@ -389,7 +389,6 @@ func (s *Fabric2Service) GetBlockInfo(blockNumber string) (*common.Block, error)
 	if err != nil {
 		return nil, err
 	}
-
 	return block, nil
 }
 

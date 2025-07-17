@@ -41,8 +41,8 @@ func (f *ProviderFactory) CreateCryptoSuiteProvider(config core.CryptoSuiteConfi
 }
 
 // CreateSigningManager returns a new default implementation of signing manager
-func (f *ProviderFactory) CreateSigningManager(cryptoProvider core.CryptoSuite, isSM3 bool) (core.SigningManager, error) {
-	return signingMgr.New(cryptoProvider, isSM3)
+func (f *ProviderFactory) CreateSigningManager(cryptoProvider core.CryptoSuite) (core.SigningManager, error) {
+	return signingMgr.New(cryptoProvider)
 }
 
 // CreateInfraProvider returns a new default implementation of fabric primitives

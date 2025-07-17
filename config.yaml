@@ -2,7 +2,7 @@ server:
   port: 9090
 mq:
   type: 'rocketmq'
-  host: '192.168.1.45'
+  host: '10.10.10.203'
   port: 8081
   userName: ''
   password: ''

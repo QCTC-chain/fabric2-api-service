@@ -32,7 +32,7 @@ const (
 
 // Ledger is a client that provides access to the underlying ledger of a channel.
 type Ledger struct {
-	chName            string
+	chName string
 	EnableTxTimeStamp bool // jzk, tx with timestamp, for fabric 1.4.8-enhanced
 }
 
@@ -45,7 +45,7 @@ type ResponseVerifier interface {
 // NewLedger constructs a Ledger client for the current context and named channel.
 func NewLedger(chName string, enableTxTimeStamp bool) (*Ledger, error) {
 	l := Ledger{
-		chName:            chName,
+		chName: chName,
 		EnableTxTimeStamp: enableTxTimeStamp,
 	}
 	return &l, nil
