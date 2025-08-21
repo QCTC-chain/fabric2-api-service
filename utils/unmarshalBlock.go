@@ -2,6 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -94,6 +97,10 @@ func GetEventByte(block *common.Block, chainName, chaincodeName, chainId string)
 		eventRes.Path = "cross." + chainName + "." + chaincodeName
 		eventRes.EventData = v.Payload
 		eventRes.TxId = v.TxId
+		tm, err := getTimeFromBlock(block)
+		if err == nil {
+			eventRes.TxTime = tm.Format(time.DateTime)
+		}
 		eventRes.ChaincodeName = v.ChaincodeId
 		eventRes.BlockHeight = block.GetHeader().GetNumber()
 		eventRes.ChainId = chainId
@@ -106,4 +113,49 @@ func GetEventByte(block *common.Block, chainName, chaincodeName, chainId string)
 		})
 	}
 	return eventBytes, nil
+}
+
+func getTimeFromBlock(block *common.Block) (time.Time, error) {
+	if block == nil || block.Data == nil || block.Data.Data == nil || len(block.Data.Data) == 0 {
+		return time.Time{}, errors.New("block or block data is nil or empty")
+	}
+
+	envelopeBytes := block.Data.Data[0]
+	var envelope = &common.Envelope{}
+	if err := proto.Unmarshal(envelopeBytes, envelope); err != nil {
+		return time.Time{}, errors.New(err.Error())
+	}
+
+	// 3. 解组为 Payload 结构体
+	var payload = &common.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return time.Time{}, errors.New(err.Error())
+	}
+
+	if payload.Header == nil {
+		return time.Time{}, errors.New("payload header is nil")
+	}
+
+	// 4. 获取 ChannelHeader
+	chdr, err := getChannelHeader(payload.Header)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// 5. 提取并转换时间戳
+	// chdr.Timestamp 是 *timestamp.Timestamp 类型
+	if chdr.Timestamp == nil {
+		return time.Time{}, errors.New("channel header timestamp is nil")
+	}
+	blockTime := time.Unix(chdr.Timestamp.Seconds, int64(chdr.Timestamp.Nanos))
+	return blockTime, nil
+}
+
+// getChannelHeader 是一个辅助函数，用于从 Payload Header 中解组出 ChannelHeader
+func getChannelHeader(header *common.Header) (*common.ChannelHeader, error) {
+	chdr := &common.ChannelHeader{}
+	if err := proto.Unmarshal(header.ChannelHeader, chdr); err != nil {
+		return nil, errors.New(err.Error())
+	}
+	return chdr, nil
 }
