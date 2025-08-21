@@ -1,9 +1,10 @@
 package define
 
 import (
+	"sync"
+
 	"github.com/apache/rocketmq-clients/golang/v5"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/fab"
-	"sync"
 )
 
 var (
@@ -107,6 +108,7 @@ type EventRes struct {
 	BlockHeight   uint64   `json:"block_height"`
 	ChainId       string   `json:"chain_id"`
 	TxId          string   `json:"tx_id"`
+	TxTime        string   `json:"tx_time"`
 	Path          string   `json:"path"`
 	EventData     []string `json:"event_data"`
 	ChaincodeName string   `json:"chaincode_name"`
